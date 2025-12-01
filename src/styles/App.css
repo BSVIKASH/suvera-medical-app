@@ -438,3 +438,23 @@ body {
     font-size: 1rem;
   }
 }
+/* Fix for Leaflet Routing Machine lines */
+.leaflet-routing-container {
+  display: none !important; /* Hides the white instruction box */
+}
+
+/* Ensure SVG lines (routes) are above map tiles */
+.leaflet-overlay-pane {
+  z-index: 400 !important;
+}
+
+/* Ensure markers are above lines */
+.leaflet-marker-pane {
+  z-index: 600 !important;
+}
+
+/* Pulse animation for user location */
+@keyframes pulse-ring {
+  0% { transform: scale(0.33); opacity: 1; }
+  80%, 100% { opacity: 0; }
+}

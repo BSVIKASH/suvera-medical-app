@@ -5,6 +5,7 @@ import UserLogin from './pages/Auth/UserLogin';
 import UserSignup from './pages/Auth/UserSignup';
 import HospitalDashboard from './pages/Hospital/HospitalDashboard';
 import UserDashboard from './pages/User/UserDashboard';
+
 import './App.css';
 
 const MedicalApp = () => {
@@ -45,8 +46,9 @@ const MedicalApp = () => {
     { id: 6, name: 'MIOT International', specialization: 'Orthopedics, Organ Transplant', address: '654 Ambattur Road, Chennai', phone: '044-67890123', emergency: true }
   ];
 
-  // Header Component
-  const Header = () => (
+  // --- HELPER FUNCTIONS (Instead of Components) ---
+
+  const renderHeader = () => (
     <header className="app-header">
       <div className="header-content">
         <div className="logo-section">
@@ -102,8 +104,7 @@ const MedicalApp = () => {
     </header>
   );
 
-  // Footer Component with Hospital Login
-  const Footer = () => (
+  const renderFooter = () => (
     <footer className="app-footer">
       <div className="footer-content">
         <div className="footer-section">
@@ -180,8 +181,7 @@ const MedicalApp = () => {
     </footer>
   );
 
-  // SOS Emergency Component
-  const SOSEmergency = () => (
+  const renderSOSEmergency = () => (
     <div className="sos-section">
       <div className="sos-header">
         <h2>🚨 Emergency SOS</h2>
@@ -216,8 +216,21 @@ const MedicalApp = () => {
     </div>
   );
 
-  // Voice Recognition Component
-  const VoiceRecognition = () => {
+  // Check if symptoms are critical
+  const isCriticalSymptom = (symptoms) => {
+    const symptomText = symptoms.toLowerCase();
+    return criticalSymptoms.some(critical => symptomText.includes(critical));
+  };
+
+  // Handle critical emergency - direct to hospitals
+  const handleCriticalEmergency = () => {
+    setHospitals(hospitalDatabase.filter(h => h.emergency));
+    setActiveTab('hospitals');
+    window.scrollTo(0, 0);
+  };
+
+  // Voice Recognition Functionality
+  const renderVoiceRecognition = () => {
     const startListening = () => {
       setIsListening(true);
       setTimeout(() => {
@@ -256,21 +269,8 @@ const MedicalApp = () => {
     );
   };
 
-  // Check if symptoms are critical
-  const isCriticalSymptom = (symptoms) => {
-    const symptomText = symptoms.toLowerCase();
-    return criticalSymptoms.some(critical => symptomText.includes(critical));
-  };
-
-  // Handle critical emergency - direct to hospitals
-  const handleCriticalEmergency = () => {
-    setHospitals(hospitalDatabase.filter(h => h.emergency));
-    setActiveTab('hospitals');
-    window.scrollTo(0, 0);
-  };
-
-  // Main Home Content with Language Selection
-  const MainHomeContent = () => (
+  // Main Home Content (Changed from Component to Function)
+  const renderHomeContent = () => (
     <div className="home-tab">
       <div className="hero-section">
         <h2>Find the Right Medical Help</h2>
@@ -291,23 +291,16 @@ const MedicalApp = () => {
         </select>
       </div>
 
-      {/* Symptom Input Section - FIXED */}
+      {/* Symptom Input Section */}
       <div className="symptom-section">
         <div className="section-header">
           <h3>Describe Your Symptoms</h3>
-          <VoiceRecognition />
+          {renderVoiceRecognition()}
         </div>
         
-        {/* DEBUGGED TEXTAREA */}
         <textarea
           value={symptomDescription}
-          onChange={(e) => {
-            console.log('Input value:', e.target.value);
-            setSymptomDescription(e.target.value);
-          }}
-          onInput={(e) => {
-            setSymptomDescription(e.target.value);
-          }}
+          onChange={(e) => setSymptomDescription(e.target.value)}
           placeholder={
             selectedLanguage === 'tamil' ? 'உங்கள் அறிகுறிகளை இங்கே விவரிக்கவும்...' :
             selectedLanguage === 'hindi' ? 'अपने लक्षणों का वर्णन यहाँ करें...' :
@@ -373,8 +366,8 @@ const MedicalApp = () => {
     </div>
   );
 
-  // Hospitals Tab Content
-  const HospitalsTabContent = () => (
+  // Hospitals Tab Content (Changed from Component to Function)
+  const renderHospitalsTab = () => (
     <div className="hospitals-tab">
       <h2>🏥 All Hospitals</h2>
       <div className="hospital-grid">
@@ -395,11 +388,11 @@ const MedicalApp = () => {
   const renderMainContent = () => {
     switch (activeTab) {
       case 'hospitals':
-        return <HospitalsTabContent />;
+        return renderHospitalsTab(); // Called as function
       case 'emergency':
-        return <SOSEmergency />;
+        return renderSOSEmergency(); // Called as function
       default:
-        return <MainHomeContent />;
+        return renderHomeContent(); // Called as function - THIS FIXES THE BUG
     }
   };
 
@@ -413,7 +406,7 @@ const MedicalApp = () => {
   const handleUserLogin = () => {
     setUser({ name: 'Patient User', type: 'patient' });
     setUserType('patient');
-    setCurrentView('main');
+    setCurrentView('user-dashboard');
   };
 
   const handleHospitalLogin = () => {
@@ -425,7 +418,7 @@ const MedicalApp = () => {
   const handleUserSignup = () => {
     setUser({ name: 'New Patient', type: 'patient' });
     setUserType('patient');
-    setCurrentView('main');
+    setCurrentView('user-dashboard');
   };
 
   const handleHospitalSignup = () => {
@@ -444,18 +437,12 @@ const MedicalApp = () => {
     setIsLoading(true);
 
     try {
-      // Check if symptoms are critical
       if (isCriticalSymptom(symptomDescription)) {
-        // Critical symptoms - show all emergency hospitals immediately
         setHospitals(hospitalDatabase.filter(h => h.emergency));
-        
-        // Show emergency alert
         setTimeout(() => {
           alert('🚨 Emergency symptoms detected! Directing you to emergency hospitals immediately.');
         }, 500);
-        
       } else {
-        // Non-critical symptoms - require login
         if (!user) {
           setTimeout(() => {
             alert('Please login to access hospital recommendations for non-emergency symptoms.');
@@ -464,7 +451,6 @@ const MedicalApp = () => {
           return;
         }
         
-        // User is logged in, proceed with hospital search
         let symptomsToSearch = symptomDescription;
         if (selectedLanguage !== 'english') {
           symptomsToSearch = await translateSymptoms(symptomDescription, selectedLanguage, 'english');
@@ -528,11 +514,11 @@ const MedicalApp = () => {
       default:
         return (
           <>
-            <Header />
+            {renderHeader()}
             <main className="main-content">
               {renderMainContent()}
             </main>
-            <Footer />
+            {renderFooter()}
           </>
         );
     }

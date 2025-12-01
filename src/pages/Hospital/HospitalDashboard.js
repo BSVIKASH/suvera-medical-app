@@ -2,8 +2,16 @@
 import React, { useState } from 'react';
 import '../../styles/Dashboard.css';
 
-const HospitalDashboard = () => {
+const HospitalDashboard = ({ onLogout }) => {
   const [activeModule, setActiveModule] = useState('dashboard');
+
+  const menuItems = [
+    { key: 'dashboard', icon: '📊', label: 'Dashboard', description: 'Hospital overview' },
+    { key: 'doctors', icon: '👨‍⚕️', label: 'Doctors', description: 'Staff management' },
+    { key: 'facilities', icon: '🏗️', label: 'Facilities', description: 'Resources' },
+    { key: 'beds', icon: '🛏️', label: 'Beds', description: 'Availability' },
+    { key: 'emergency', icon: '🚨', label: 'Emergency', description: 'Requests' },
+  ];
 
   const renderModule = () => {
     switch(activeModule) {
@@ -22,75 +30,59 @@ const HospitalDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
-      <aside className="sidebar">
+      {/* Improved Compact Sidebar */}
+      <aside className="sidebar compact-sidebar">
         <div className="sidebar-header">
-          <h2>🏥 COCO HEALTH</h2>
+          <div className="logo-icon">🏥</div>
+          <div className="app-name">Suvera</div>
         </div>
         
         <nav className="sidebar-nav">
-          <div className="nav-section">
-            <h3>Main</h3>
+          {menuItems.map((item) => (
             <button 
-              className={`nav-btn ${activeModule === 'dashboard' ? 'active' : ''}`}
-              onClick={() => setActiveModule('dashboard')}
+              key={item.key}
+              className={`nav-btn ${activeModule === item.key ? 'active' : ''}`}
+              onClick={() => setActiveModule(item.key)}
             >
-              <span className="nav-icon">📊</span>
-              Dashboard
+              <span className="nav-icon">{item.icon}</span>
+              <div className="nav-content">
+                <div className="nav-label">{item.label}</div>
+                <div className="nav-description">{item.description}</div>
+              </div>
             </button>
-          </div>
-
-          <div className="nav-section">
-            <h3>Management</h3>
-            <button 
-              className={`nav-btn ${activeModule === 'doctors' ? 'active' : ''}`}
-              onClick={() => setActiveModule('doctors')}
-            >
-              <span className="nav-icon">👨‍⚕️</span>
-              Doctor Management
-            </button>
-            <button 
-              className={`nav-btn ${activeModule === 'facilities' ? 'active' : ''}`}
-              onClick={() => setActiveModule('facilities')}
-            >
-              <span className="nav-icon">🏗️</span>
-              Facility Management
-            </button>
-            <button 
-              className={`nav-btn ${activeModule === 'beds' ? 'active' : ''}`}
-              onClick={() => setActiveModule('beds')}
-            >
-              <span className="nav-icon">🛏️</span>
-              Bed Management
-            </button>
-          </div>
-
-          <div className="nav-section">
-            <h3>Emergency</h3>
-            <button 
-              className={`nav-btn ${activeModule === 'emergency' ? 'active' : ''}`}
-              onClick={() => setActiveModule('emergency')}
-            >
-              <span className="nav-icon">🚨</span>
-              Emergency Requests
-            </button>
-          </div>
+          ))}
         </nav>
+
+        <div className="sidebar-footer">
+          <button className="nav-btn logout-btn" onClick={onLogout}>
+            <span className="nav-icon">🚪</span>
+            <div className="nav-content">
+              <div className="nav-label">Logout</div>
+              <div className="nav-description">Sign out</div>
+            </div>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
       <main className="main-content">
         <header className="dashboard-header">
           <div className="header-title">
-            <h1>Hospital Admin Dashboard</h1>
-            <p>City General Hospital - Administrator Panel</p>
+            <h1>
+              {menuItems.find(item => item.key === activeModule)?.label || 'Hospital Dashboard'}
+            </h1>
+            <p>
+              {menuItems.find(item => item.key === activeModule)?.description || 'Hospital management overview'}
+            </p>
           </div>
           <div className="header-actions">
-            <button className="btn btn-outline">
-              🔔 Notifications
+            <button className="btn btn-outline" title="Notifications">
+              <span className="btn-icon">🔔</span>
+              <span className="btn-text">Notifications</span>
             </button>
-            <button className="btn btn-outline">
-              ⚙️ Settings
+            <button className="btn btn-outline" title="Settings">
+              <span className="btn-icon">⚙️</span>
+              <span className="btn-text">Settings</span>
             </button>
           </div>
         </header>
@@ -100,6 +92,7 @@ const HospitalDashboard = () => {
     </div>
   );
 };
+
 
 const HospitalDashboardHome = () => {
   return (
