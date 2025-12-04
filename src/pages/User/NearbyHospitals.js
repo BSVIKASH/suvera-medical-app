@@ -65,12 +65,12 @@ const NearbyHospitals = ({ onBack }) => {
     const routeControlsRef = useRef([]);
     const userMarkerRef = useRef(null);
     const hospitalMarkersRef = useRef([]);
+    const animationTimeoutsRef = useRef([]); // To track and clear timeouts
 
     // --- 1. Initialize Map ---
     useEffect(() => {
         if (!mapRef.current) return;
 
-        // Default view
         const mapInstance = L.map(mapRef.current).setView([20.5937, 78.9629], 5);
         
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -84,18 +84,18 @@ const NearbyHospitals = ({ onBack }) => {
         };
     }, []);
 
-    // --- 2. API Fetch Function (Wrapped in useCallback) ---
+    // --- 2. API Fetch Function (Updated to 20km) ---
     const fetchNearbyHospitals = useCallback(async (lat, lng) => {
         setIsFetchingHospitals(true);
         setErrorMsg('');
 
-        // Query: Find nodes, ways, relations tagged "hospital" within 5000m
+        // Query: Find nodes, ways, relations tagged "hospital" within 20000m (20km)
         const query = `
             [out:json][timeout:25];
             (
-              node["amenity"="hospital"](around:5000,${lat},${lng});
-              way["amenity"="hospital"](around:5000,${lat},${lng});
-              relation["amenity"="hospital"](around:5000,${lat},${lng});
+              node["amenity"="hospital"](around:20000,${lat},${lng});
+              way["amenity"="hospital"](around:20000,${lat},${lng});
+              relation["amenity"="hospital"](around:20000,${lat},${lng});
             );
             out center;
         `;
@@ -122,7 +122,7 @@ const NearbyHospitals = ({ onBack }) => {
             setHospitals(formattedHospitals);
             
             if(formattedHospitals.length === 0) {
-                setErrorMsg("No hospitals found within 5km radius.");
+                setErrorMsg("No hospitals found within 20km radius.");
             }
 
         } catch (error) {
@@ -133,7 +133,7 @@ const NearbyHospitals = ({ onBack }) => {
         }
     }, []);
 
-    // --- 3. Get User Location ---
+    // --- 3. Get User Location (High Accuracy Enabled) ---
     useEffect(() => {
         if (!map) return;
 
@@ -166,19 +166,25 @@ const NearbyHospitals = ({ onBack }) => {
         };
 
         const handleError = (err) => {
-            console.error(err);
+            console.error("Location Error:", err);
             setErrorMsg("Location denied. Using Demo Location.");
-            handleSuccess({ coords: { latitude: 9.9252, longitude: 78.1198 } });
+            handleSuccess({ coords: { latitude: 9.9252, longitude: 78.1198 } }); // Madurai fallback
         };
 
         if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(handleSuccess, handleError);
+            // High Accuracy Options
+            const options = {
+                enableHighAccuracy: true, // Forces GPS/Wifi scan over IP
+                timeout: 10000,
+                maximumAge: 0
+            };
+            navigator.geolocation.getCurrentPosition(handleSuccess, handleError, options);
         } else {
             handleError();
         }
-    }, [map, fetchNearbyHospitals]); // Added fetchNearbyHospitals dependency
+    }, [map, fetchNearbyHospitals]);
 
-    // --- 4. Route Calculation Logic (Wrapped in useCallback) ---
+    // --- 4. Route Calculation Logic (Race Condition Fixed) ---
     const calculateRoutes = useCallback((hospital, currentMapInstance) => {
         const currentMap = currentMapInstance || map;
         if (!currentMap || !userLoc) return;
@@ -188,6 +194,10 @@ const NearbyHospitals = ({ onBack }) => {
             try { currentMap.removeControl(ctrl); } catch(e){}
         });
         routeControlsRef.current = [];
+
+        // Cleanup previous timeouts
+        animationTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+        animationTimeoutsRef.current = [];
 
         const start = userLoc;
         const end = hospital.coords;
@@ -235,7 +245,7 @@ const NearbyHospitals = ({ onBack }) => {
         ];
 
         routeConfigs.forEach((config, index) => {
-            setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 const control = L.Routing.control({
                     waypoints: config.waypoints,
                     lineOptions: {
@@ -269,14 +279,16 @@ const NearbyHospitals = ({ onBack }) => {
                     routeControlsRef.current.push(control);
                 } catch(e) { console.log('Map update error', e); }
             }, index * 500);
+            
+            animationTimeoutsRef.current.push(timeoutId);
         });
-    }, [map, userLoc]); // Added dependencies
+    }, [map, userLoc]);
 
-    // --- 5. Handle Hospital Select (Wrapped in useCallback) ---
+    // --- 5. Handle Hospital Select ---
     const handleHospitalSelect = useCallback((h, mapInstance) => {
         setSelectedHospital(h);
         calculateRoutes(h, mapInstance || map);
-    }, [calculateRoutes, map]); // Added dependencies
+    }, [calculateRoutes, map]);
 
     // --- 6. Render Hospital Markers ---
     useEffect(() => {
@@ -298,7 +310,7 @@ const NearbyHospitals = ({ onBack }) => {
 
             hospitalMarkersRef.current.push(marker);
         });
-    }, [hospitals, map, handleHospitalSelect]); // Added handleHospitalSelect dependency
+    }, [hospitals, map, handleHospitalSelect]);
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'Segoe UI, sans-serif' }}>
@@ -335,7 +347,7 @@ const NearbyHospitals = ({ onBack }) => {
                     zIndex: 90
                 }}>
                     {isLocating && <div style={{ color: '#3498db' }}>📍 Acquiring GPS...</div>}
-                    {isFetchingHospitals && <div style={{ color: '#e67e22' }}>📡 Scanning for hospitals within 5km...</div>}
+                    {isFetchingHospitals && <div style={{ color: '#e67e22' }}>📡 Scanning for hospitals within 20km...</div>}
                     {errorMsg && <div style={{ color: '#e74c3c', marginBottom: '10px' }}>⚠️ {errorMsg}</div>}
 
                     {!selectedHospital ? (
@@ -370,6 +382,8 @@ const NearbyHospitals = ({ onBack }) => {
                                         try { map.removeControl(c); } catch(e){}
                                     });
                                     routeControlsRef.current = [];
+                                    animationTimeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+                                    animationTimeoutsRef.current = [];
                                 }}
                                 style={{ width: '100%', padding: '8px', marginBottom: '15px', background: '#ecf0f1', border: 'none', borderRadius: '4px', cursor: 'pointer', color: '#2c3e50' }}
                             >
