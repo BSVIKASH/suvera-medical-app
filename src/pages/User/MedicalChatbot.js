@@ -1,12 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import NearbyHospitals from "./NearbyHospitals";
-import '../../styles/Dashboard.css';
-import '../../styles/Chatbot.css'; // Make sure this CSS file exists!
+import '../../styles/Chatbot.css';
 
-// --- 1. CHATBOT COMPONENT (Integrated) ---
 const MedicalChatbot = () => {
     // 🔴 YOUR KEY
-    const GROQ_API_KEY = process.env.REACT_APP_GROQ_API_KEY; 
+    const GROQ_API_KEY = process.env.REACT_APP_GROQ_API_KEY;
 
     const [messages, setMessages] = useState([
         { 
@@ -56,6 +53,7 @@ const MedicalChatbot = () => {
                     messages: [
                         { 
                             role: "system", 
+                            // 👇 UPDATED BRAIN: STRICTER MEDICAL RULES
                             content: `You are Suvera, an expert Medical AI Assistant. 
                             1. ANALYZE symptoms carefully.
                             2. IF CRITICAL (Heart attack, Stroke, TB, Severe Burns): Start with "⚠️ **CRITICAL WARNING**" and advise immediate doctor visit.
@@ -105,7 +103,11 @@ const MedicalChatbot = () => {
 
     const formatResponse = (text) => {
         let cleanText = text.replace(/\n/g, "<br>");
+        
+        // Bold formatting
         cleanText = cleanText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"); 
+        
+        // Organize Sections with Icons
         cleanText = cleanText.replace(/Condition:/gi, "<strong>🏥 Condition:</strong>");
         cleanText = cleanText.replace(/Home Remed/gi, "<br><strong>💊 Home Remedy</strong>");
         cleanText = cleanText.replace(/Do:/g, "<br><strong>✅ Do:</strong>");
@@ -120,15 +122,22 @@ const MedicalChatbot = () => {
     };
 
     return (
-        <div className="content-card" style={{ height: 'calc(100vh - 120px)', padding: '0', background: 'transparent', border: 'none', boxShadow: 'none' }}>
+        <div className="content-card" style={{ height: 'calc(100vh - 100px)', padding: '0', background: 'transparent', border: 'none', boxShadow: 'none' }}>
+            
             <div className="chatbot-container">
+                
+                {/* --- HEADER --- */}
                 <div className="chat-header">
-                    <div className="bot-avatar-circle">🩺</div>
+                    <div className="bot-avatar-circle">
+                        🩺
+                    </div>
                     <div className="header-info">
                         <h3>Suvera</h3>
                         <p><span className="online-dot"></span> Personal Doc</p>
                     </div>
                 </div>
+
+                {/* --- CHAT HISTORY --- */}
                 <div className="chat-box" ref={chatBoxRef}>
                     {messages.map((msg) => (
                         <div key={msg.id} className={`message ${msg.sender}-message ${msg.isCritical ? 'critical-msg' : ''}`}>
@@ -141,12 +150,16 @@ const MedicalChatbot = () => {
                         </div>
                     )}
                 </div>
+
+                {/* --- QUICK CHIPS --- */}
                 <div className="quick-actions">
                     <div className="chip" onClick={() => handleSend('I have a bad headache')}>🤕 Headache</div>
                     <div className="chip" onClick={() => handleSend('I burned my hand')}>🔥 Burn</div>
                     <div className="chip" onClick={() => handleSend('Stomach pain')}>🤢 Stomach</div>
                     <div className="chip" onClick={() => handleSend('Cold and cough')}>🤧 Flu</div>
                 </div>
+
+                {/* --- INPUT AREA --- */}
                 <div className="chat-input-area">
                     <input 
                         type="text" 
@@ -167,155 +180,4 @@ const MedicalChatbot = () => {
     );
 };
 
-// --- 2. DASHBOARD HOME (Action Center) ---
-const DashboardHome = ({ onNavigate }) => {
-  const liveStats = [
-    { label: 'Active Hospitals', value: '12', color: '#2ecc71' },
-    { label: 'Avg Wait Time', value: '8 min', color: '#3498db' },
-    { label: 'ICU Availability', value: 'High', color: '#e67e22' }
-  ];
-
-  return (
-    <div className="dashboard-home fade-in">
-      <section className="dashboard-hero">
-        <div className="hero-content-left">
-          <h2><span className="wave">👋</span> How can Suvera help?</h2>
-          <p className="hero-subtitle">AI-powered symptom analysis & specialist matching.</p>
-          <div className="ai-input-wrapper">
-            <span className="ai-icon">🧠</span>
-            <input type="text" placeholder="Describe symptoms..." className="ai-input" />
-            <button className="ai-analyze-btn" onClick={() => onNavigate('chatbot')}>Analyze</button>
-          </div>
-          <div className="quick-tags">
-            <span>Try:</span>
-            <button className="tag" onClick={() => onNavigate('chatbot')}>Stomach ache</button>
-            <button className="tag" onClick={() => onNavigate('chatbot')}>Trauma</button>
-          </div>
-        </div>
-        <div className="hero-visual">
-          <div className="pulse-ring"></div>
-          <div className="pulse-icon">🏥</div>
-        </div>
-      </section>
-
-      <section className="action-grid">
-        <div className="card emergency-card" onClick={() => onNavigate('emergency')}>
-          <div className="card-icon-bg">🚨</div>
-          <div className="card-text">
-            <h3>Emergency SOS</h3>
-            <p>Critical Case Bypass</p>
-            <span className="link-arrow">Get Help Now &rarr;</span>
-          </div>
-        </div>
-
-        <div className="card standard-card" onClick={() => onNavigate('nearby')}>
-          <div className="card-icon-bg" style={{ color: '#3498db', background: '#eaf2f8' }}>📍</div>
-          <div className="card-text">
-            <h3>Nearby Hospitals</h3>
-            <p>Live Map & Routing</p>
-          </div>
-        </div>
-
-        <div className="card standard-card" onClick={() => onNavigate('chatbot')}>
-          <div className="card-icon-bg" style={{ color: '#9b59b6', background: '#f5eef8' }}>💬</div>
-          <div className="card-text">
-            <h3>Medical Assistant</h3>
-            <p>Chat with AI Doctor</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="stats-section">
-        <h3 className="section-title">📡 Live Area Status (Verified)</h3>
-        <div className="stats-container">
-          {liveStats.map((stat, index) => (
-            <div key={index} className="stat-card" style={{ borderTop: `4px solid ${stat.color}` }}>
-              <div className="stat-value" style={{ color: stat.color }}>{stat.value}</div>
-              <div className="stat-label">{stat.label}</div>
-            </div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-};
-
-const EmergencyAssistance = () => <div className="content-card"><h3>🚨 Emergency Assistance Active</h3><p>Connecting to nearest ambulance...</p></div>;
-const UserProfile = () => <div className="content-card"><h3>👤 User Profile</h3><p>Manage your health records here.</p></div>;
-
-// --- 3. MAIN DASHBOARD CONTAINER ---
-const UserDashboard = ({ onLogout }) => {
-  const [activeModule, setActiveModule] = useState('dashboard');
-
-  const menuItems = [
-    { key: 'dashboard', icon: '📊', label: 'Dashboard', description: 'Overview' },
-    { key: 'emergency', icon: '🚨', label: 'Emergency', description: 'Get help' },
-    { key: 'nearby', icon: '📍', label: 'Hospitals', description: 'Find nearby' },
-    { key: 'chatbot', icon: '🤖', label: 'Medical Assistant', description: 'AI Doctor' },
-    { key: 'profile', icon: '👤', label: 'Profile', description: 'Account' },
-  ];
-
-  if (activeModule === 'nearby') {
-    return <NearbyHospitals onBack={() => setActiveModule('dashboard')} />;
-  }
-
-  const renderModule = () => {
-    switch(activeModule) {
-      case 'emergency': return <EmergencyAssistance />;
-      case 'chatbot': return <MedicalChatbot />;
-      case 'profile': return <UserProfile />;
-      default: return <DashboardHome onNavigate={setActiveModule} />;
-    }
-  };
-
-  return (
-    <div className="dashboard-container">
-      <aside className="sidebar">
-        <div className="sidebar-header">
-          <div className="logo-icon">🏥</div>
-          <div className="app-name">Suvera</div>
-        </div>
-        <nav className="sidebar-nav">
-          {menuItems.map((item) => (
-            <button 
-              key={item.key}
-              className={`nav-item ${activeModule === item.key ? 'active' : ''}`}
-              onClick={() => setActiveModule(item.key)}
-            >
-              <span className="nav-icon">{item.icon}</span>
-              <div className="nav-text">
-                <span className="nav-label">{item.label}</span>
-                <span className="nav-desc">{item.description}</span>
-              </div>
-            </button>
-          ))}
-        </nav>
-        <div className="sidebar-footer">
-          <button className="nav-item logout-btn" onClick={onLogout}>
-            <span className="nav-icon">🚪</span>
-            <span className="nav-label">Logout</span>
-          </button>
-        </div>
-      </aside>
-
-      <main className="main-content-area">
-        <header className="top-header">
-          <div className="header-greeting">
-            <h1>{menuItems.find(item => item.key === activeModule)?.label}</h1>
-            <p>Welcome back, User</p>
-          </div>
-          <div className="header-actions">
-            <button className="notif-btn">🔔</button>
-            <div className="user-avatar">U</div>
-          </div>
-        </header>
-
-        <div className="content-scrollable">
-          {renderModule()}
-        </div>
-      </main>
-    </div>
-  );
-};
-
-export default UserDashboard;
+export default MedicalChatbot;

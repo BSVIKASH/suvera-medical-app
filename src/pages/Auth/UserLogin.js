@@ -1,4 +1,3 @@
-// src/pages/Auth/UserLogin.js
 import React, { useState, useEffect } from 'react';
 import '../../styles/Auth.css';
 
@@ -48,9 +47,10 @@ const UserLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
         }
       }
 
-      // Auto-submit when all fields are filled
+      // Check if all fields are filled
       if (newOtp.every(digit => digit !== '') && index === 5) {
-        handleVerifyOtp();
+        // FIX: Pass the 'newOtp' directly to verify, don't wait for state update
+        handleVerifyOtp(newOtp);
       }
     }
   };
@@ -65,8 +65,10 @@ const UserLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
     }
   };
 
-  const handleVerifyOtp = () => {
-    const enteredOtp = otp.join('');
+  // FIX: Accept an argument 'finalOtp'. If not provided, use state 'otp'.
+  const handleVerifyOtp = (finalOtp = otp) => {
+    const enteredOtp = finalOtp.join('');
+    
     if (enteredOtp.length !== 6) {
       alert('Please enter the complete 6-digit OTP');
       return;
@@ -79,10 +81,12 @@ const UserLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
       // Clear OTP fields
       setOtp(['', '', '', '', '', '']);
       // Focus first input
-      const firstInput = document.getElementById('otp-0');
-      if (firstInput) {
-        firstInput.focus();
-      }
+      setTimeout(() => {
+        const firstInput = document.getElementById('otp-0');
+        if (firstInput) {
+          firstInput.focus();
+        }
+      }, 0);
     }
   };
 
@@ -168,7 +172,7 @@ const UserLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
 
                 <button 
                   type="button" 
-                  onClick={handleVerifyOtp} 
+                  onClick={() => handleVerifyOtp()} 
                   className="auth-btn"
                   disabled={otp.some(digit => digit === '')}
                 >
