@@ -1,31 +1,22 @@
 // src/pages/Auth/HospitalSignup.js
 import React, { useState } from 'react';
+import api from '../../api'; // Import the API connection
 import '../../styles/Auth.css';
 
-const HospitalSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
+const HospitalSignup = ({ onSwitchToLogin, onBack }) => {
   const [formData, setFormData] = useState({
     hospitalName: '',
     address: '',
     email: '',
     contact: '',
+    licenceNumber: '', // ✅ Added this to match Database
     password: '',
-    confirmPassword: '',
-    licenseFile: null
+    confirmPassword: ''
   });
 
-  const [doctors, setDoctors] = useState([
-    { name: '', specialization: '', specializationId: '', contact: '', licenseFile: null }
-  ]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
-      return;
-    }
-    onSignup();
-  };
-
+  // Handle Input Changes
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -33,15 +24,47 @@ const HospitalSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
     });
   };
 
-  const handleFileChange = (e) => {
-    setFormData({
-      ...formData,
-      licenseFile: e.target.files[0]
-    });
-  };
+  // Handle Form Submission
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const addDoctor = () => {
-    setDoctors([...doctors, { name: '', specialization: '', specializationId: '', contact: '', licenseFile: null }]);
+    // 1. Validation
+    if (formData.password !== formData.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    setIsLoading(true);
+
+    // 2. Prepare Data for Backend
+    // Keys here must match the C# DTO exactly (case-insensitive usually, but strict spelling)
+    const payload = {
+      name: formData.hospitalName,
+      address: formData.address,
+      phoneNumber: formData.contact,     // Matches 'PhoneNumber' in DB
+      licenceNumber: formData.licenceNumber, // Matches 'LicenceNumber' in DB
+      email: formData.email,
+      password: formData.password
+    };
+
+    try {
+      // 3. Send Data to C#
+      // This hits: POST https://localhost:7189/api/Auth/register
+      const response = await api.post('/Auth/register', payload);
+      
+      console.log("Registration Success:", response.data);
+      alert("Registration Successful! Please Login.");
+      
+      // 4. Redirect to Login Page
+      onSwitchToLogin();
+
+    } catch (error) {
+      console.error("Registration Error:", error);
+      // Show the error message from the backend (e.g., "Email already exists")
+      alert(error.response?.data || "Registration failed. Please check your connection.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,6 +87,7 @@ const HospitalSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
           </div>
 
           <form onSubmit={handleSubmit}>
+            {/* Hospital Name */}
             <div className="form-group">
               <label htmlFor="hospitalName">🏥 Hospital Name</label>
               <input
@@ -78,6 +102,7 @@ const HospitalSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
               />
             </div>
 
+            {/* Address */}
             <div className="form-group">
               <label htmlFor="address">📍 Address</label>
               <input
@@ -92,6 +117,7 @@ const HospitalSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
               />
             </div>
 
+            {/* Email & Contact */}
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="email">📧 Email</label>
@@ -122,6 +148,22 @@ const HospitalSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
               </div>
             </div>
 
+            {/* ✅ NEW: License Number (Required by Database) */}
+            <div className="form-group">
+              <label htmlFor="licenceNumber">📄 License Number</label>
+              <input
+                type="text"
+                id="licenceNumber"
+                name="licenceNumber"
+                value={formData.licenceNumber}
+                onChange={handleChange}
+                placeholder="e.g. LIC-12345"
+                className="form-input"
+                required
+              />
+            </div>
+
+            {/* Passwords */}
             <div className="form-row">
               <div className="form-group">
                 <label htmlFor="password">🔒 Password</label>
@@ -152,74 +194,9 @@ const HospitalSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
               </div>
             </div>
 
-            <div className="form-group">
-              <label>📄 Hospital License</label>
-              <div 
-                className="upload-area"
-                onClick={() => document.getElementById('license-upload').click()}
-              >
-                <div className="upload-icon">📄</div>
-                <div className="upload-text">
-                  {formData.licenseFile ? formData.licenseFile.name : 'Click to upload hospital license (PDF, JPG, PNG)'}
-                </div>
-                <input
-                  type="file"
-                  id="license-upload"
-                  className="file-input"
-                  onChange={handleFileChange}
-                  accept=".pdf,.jpg,.jpeg,.png"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>👨‍⚕️ Doctor Information</label>
-              {doctors.map((doctor, index) => (
-                <div key={index} style={{ marginBottom: '1rem', padding: '1rem', border: '1px solid #e2e8f0', borderRadius: '8px', background: '#f8fafc' }}>
-                  <h4 style={{ marginBottom: '0.5rem', color: '#374151', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    👨‍⚕️ Doctor {index + 1}
-                  </h4>
-                  <div className="form-row">
-                    <input
-                      type="text"
-                      placeholder="Doctor Name"
-                      className="form-input"
-                      style={{ marginBottom: '0.5rem' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Specialization"
-                      className="form-input"
-                      style={{ marginBottom: '0.5rem' }}
-                    />
-                  </div>
-                  <div className="form-row">
-                    <input
-                      type="text"
-                      placeholder="License ID"
-                      className="form-input"
-                      style={{ marginBottom: '0.5rem' }}
-                    />
-                    <input
-                      type="tel"
-                      placeholder="Contact"
-                      className="form-input"
-                      style={{ marginBottom: '0.5rem' }}
-                    />
-                  </div>
-                  <div className="upload-area" style={{ marginBottom: '0.5rem' }}>
-                    <div className="upload-icon">📄</div>
-                    <div className="upload-text">Upload Doctor License</div>
-                  </div>
-                </div>
-              ))}
-              <button type="button" onClick={addDoctor} className="back-btn">
-                ➕ Add Another Doctor
-              </button>
-            </div>
-
-            <button type="submit" className="auth-btn">
-              🏥 Register Hospital
+            {/* Submit Button */}
+            <button type="submit" className="auth-btn" disabled={isLoading}>
+              {isLoading ? "Registering..." : "🏥 Register Hospital"}
             </button>
           </form>
 
@@ -231,10 +208,6 @@ const HospitalSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
               </span>
             </p>
           </div>
-
-          <p className="terms-text">
-            By registering, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
-          </p>
         </div>
       </div>
     </div>

@@ -1,6 +1,7 @@
 // src/pages/Hospital/HospitalDashboard.js
-import React, { useState } from 'react';
-import '../../styles/Dashboard.css';
+import React, { useState, useEffect } from 'react';
+import api from '../../api'; // ✅ Connects to your C# Backend
+import '../../styles/Dashboard.css'; // ✅ Uses your custom CSS
 
 const HospitalDashboard = ({ onLogout }) => {
   const [activeModule, setActiveModule] = useState('dashboard');
@@ -30,8 +31,8 @@ const HospitalDashboard = ({ onLogout }) => {
 
   return (
     <div className="dashboard-container">
-      {/* Improved Compact Sidebar */}
-      <aside className="sidebar compact-sidebar">
+      {/* Sidebar */}
+      <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo-icon">🏥</div>
           <div className="app-name">Suvera</div>
@@ -41,33 +42,32 @@ const HospitalDashboard = ({ onLogout }) => {
           {menuItems.map((item) => (
             <button 
               key={item.key}
-              className={`nav-btn ${activeModule === item.key ? 'active' : ''}`}
+              className={`nav-item ${activeModule === item.key ? 'active' : ''}`}
               onClick={() => setActiveModule(item.key)}
             >
               <span className="nav-icon">{item.icon}</span>
-              <div className="nav-content">
-                <div className="nav-label">{item.label}</div>
-                <div className="nav-description">{item.description}</div>
+              <div className="nav-text">
+                <span className="nav-label">{item.label}</span>
+                <span className="nav-desc">{item.description}</span>
               </div>
             </button>
           ))}
         </nav>
 
         <div className="sidebar-footer">
-          <button className="nav-btn logout-btn" onClick={onLogout}>
+          <button className="nav-item logout-btn" onClick={onLogout}>
             <span className="nav-icon">🚪</span>
-            <div className="nav-content">
-              <div className="nav-label">Logout</div>
-              <div className="nav-description">Sign out</div>
+            <div className="nav-text">
+              <span className="nav-label">Logout</span>
             </div>
           </button>
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="main-content">
-        <header className="dashboard-header">
-          <div className="header-title">
+      <main className="main-content-area">
+        <header className="top-header">
+          <div className="header-greeting">
             <h1>
               {menuItems.find(item => item.key === activeModule)?.label || 'Hospital Dashboard'}
             </h1>
@@ -76,229 +76,214 @@ const HospitalDashboard = ({ onLogout }) => {
             </p>
           </div>
           <div className="header-actions">
-            <button className="btn btn-outline" title="Notifications">
-              <span className="btn-icon">🔔</span>
-              <span className="btn-text">Notifications</span>
-            </button>
-            <button className="btn btn-outline" title="Settings">
-              <span className="btn-icon">⚙️</span>
-              <span className="btn-text">Settings</span>
-            </button>
+            <button className="notif-btn" title="Notifications">🔔</button>
+            <div className="user-avatar">H</div>
           </div>
         </header>
 
-        {renderModule()}
+        <div className="content-scrollable">
+          {renderModule()}
+        </div>
       </main>
     </div>
   );
 };
 
 
-const HospitalDashboardHome = () => {
-  return (
-    <div>
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <div className="stat-header">
-            <div className="stat-title">Total Beds</div>
-            <div className="stat-icon">🛏️</div>
-          </div>
-          <div className="stat-value">150</div>
-          <div className="stat-change">Capacity: 85%</div>
-        </div>
-
-        <div className="stat-card warning">
-          <div className="stat-header">
-            <div className="stat-title">Available Beds</div>
-            <div className="stat-icon">✅</div>
-          </div>
-          <div className="stat-value">45</div>
-          <div className="stat-change">30% available</div>
-        </div>
-
-        <div className="stat-card success">
-          <div className="stat-header">
-            <div className="stat-title">Emergency Requests</div>
-            <div className="stat-icon">🚨</div>
-          </div>
-          <div className="stat-value">12</div>
-          <div className="stat-change">↑ 3 today</div>
-        </div>
-
-        <div className="stat-card danger">
-          <div className="stat-header">
-            <div className="stat-title">Doctors On Duty</div>
-            <div className="stat-icon">👨‍⚕️</div>
-          </div>
-          <div className="stat-value">28</div>
-          <div className="stat-change">15 specialists</div>
-        </div>
-      </div>
-
-      {/* Content Grid */}
-      <div className="content-grid">
-        <div>
-          {/* Recent Emergency Requests */}
-          <div className="content-card">
-            <div className="card-header">
-              <h3>Recent Emergency Requests</h3>
-              <div className="card-actions">
-                <button className="btn btn-outline">View All</button>
-              </div>
-            </div>
-            <div className="card-body">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Patient</th>
-                    <th>Condition</th>
-                    <th>Distance</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>John Doe</td>
-                    <td>Heart Attack</td>
-                    <td>2.3 km</td>
-                    <td><span className="status pending">Pending</span></td>
-                    <td>
-                      <button className="btn btn-success" style={{ marginRight: '0.5rem' }}>Accept</button>
-                      <button className="btn btn-danger">Reject</button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Jane Smith</td>
-                    <td>Fracture</td>
-                    <td>3.1 km</td>
-                    <td><span className="status available">Accepted</span></td>
-                    <td>
-                      <button className="btn btn-primary">View</button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Mike Johnson</td>
-                    <td>Respiratory</td>
-                    <td>1.7 km</td>
-                    <td><span className="status pending">Pending</span></td>
-                    <td>
-                      <button className="btn btn-success" style={{ marginRight: '0.5rem' }}>Accept</button>
-                      <button className="btn btn-danger">Reject</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          {/* Doctor Availability */}
-          <div className="content-card">
-            <div className="card-header">
-              <h3>Doctor Availability</h3>
-            </div>
-            <div className="card-body">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Cardiology</span>
-                  <span className="status available">3 Available</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Emergency</span>
-                  <span className="status busy">2 Busy</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Surgery</span>
-                  <span className="status available">4 Available</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>Pediatrics</span>
-                  <span className="status available">2 Available</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="content-card">
-            <div className="card-header">
-              <h3>Facility Status</h3>
-            </div>
-            <div className="card-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#3498db' }}>ICU</div>
-                  <div style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>12/15 Beds</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#27ae60' }}>OT</div>
-                  <div style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>4/6 Rooms</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#e74c3c' }}>ER</div>
-                  <div style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>8/10 Beds</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#f39c12' }}>WARD</div>
-                  <div style={{ fontSize: '0.8rem', color: '#7f8c8d' }}>45/60 Beds</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Other hospital components (DoctorManagement, FacilityManagement, etc.) would follow similar COCO theme structure
-
+/* =========================================
+   COMPONENT: DOCTOR MANAGEMENT (CONNECTED TO DB)
+   ========================================= */
 const DoctorManagement = () => {
-  const [doctors, setDoctors] = useState([
-    { id: 1, name: 'Dr. Smith', specialization: 'Cardiology', status: 'Available', contact: '+1234567890' },
-    { id: 2, name: 'Dr. Johnson', specialization: 'Emergency', status: 'Busy', contact: '+1234567891' },
-    { id: 3, name: 'Dr. Williams', specialization: 'Surgery', status: 'Available', contact: '+1234567892' }
-  ]);
+  const [doctors, setDoctors] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Form State - Matches Swagger Requirements
+  const [newDoctor, setNewDoctor] = useState({
+    name: '',
+    specialization: '',
+    contactNumber: '',
+    licenceNumber: '', // ✅ Required by Backend
+    status: 'Available' // Kept for UI, though Backend might not store it yet
+  });
+
+  // 1. Fetch Doctors from Database
+  useEffect(() => {
+    fetchDoctors();
+  }, []);
+
+  const fetchDoctors = async () => {
+    try {
+      const response = await api.get('/Doctors');
+      setDoctors(response.data);
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+      if(error.response?.status === 401) alert("Session expired. Please logout and login again.");
+    }
+  };
+
+  // 2. Handle Input Changes
+  const handleInputChange = (e) => {
+    setNewDoctor({ ...newDoctor, [e.target.name]: e.target.value });
+  };
+
+  // 3. Submit New Doctor to Backend
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // 👇 Prepare Payload: Map 'contactNumber' to 'phoneNumber'
+    const payload = {
+      name: newDoctor.name,
+      specialization: newDoctor.specialization,
+      licenceNumber: newDoctor.licenceNumber, // ✅ Sending License
+      phoneNumber: newDoctor.contactNumber    // ✅ Mapping to match DB column 'PhoneNumber'
+    };
+
+    try {
+      await api.post('/Doctors', payload);
+      alert("Doctor Added Successfully!");
+      
+      // Reset Form & Refresh List
+      setShowForm(false);
+      setNewDoctor({ name: '', specialization: '', contactNumber: '', licenceNumber: '', status: 'Available' });
+      fetchDoctors(); 
+    } catch (error) {
+      console.error("Error adding doctor:", error);
+      alert("Failed to add doctor: " + (error.response?.data?.title || "Check console for details"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 4. Delete Doctor
+  const handleDelete = async (id) => {
+    if(!window.confirm("Are you sure you want to remove this doctor?")) return;
+    try {
+      await api.delete(`/Doctors/${id}`);
+      fetchDoctors();
+    } catch (error) {
+      console.error("Error deleting doctor:", error);
+      alert("Failed to delete doctor.");
+    }
+  };
 
   return (
-    <div className="content-card">
-      <div className="card-header">
+    <div className="card standard-card" style={{ cursor: 'default' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h3>👨‍⚕️ Doctor Management</h3>
-        <div className="card-actions">
-          <button className="btn btn-primary">+ Add Doctor</button>
-        </div>
+        <button 
+          className="ai-analyze-btn" 
+          onClick={() => setShowForm(!showForm)}
+          style={{ padding: '8px 20px', fontSize: '0.9rem' }}
+        >
+          {showForm ? 'Cancel' : '+ Add Doctor'}
+        </button>
       </div>
-      <div className="card-body">
-        <table className="data-table">
+
+      {/* --- ADD DOCTOR FORM --- */}
+      {showForm && (
+        <form onSubmit={handleSubmit} style={{ background: '#f8fafc', padding: '20px', borderRadius: '12px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+            
+            {/* Name */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#64748b' }}>Name</label>
+              <input 
+                name="name" 
+                value={newDoctor.name} 
+                onChange={handleInputChange} 
+                className="ai-input" 
+                style={{ width: '100%', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '8px' }}
+                placeholder="Dr. Name" 
+                required 
+              />
+            </div>
+
+            {/* Specialization */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#64748b' }}>Specialization</label>
+              <input 
+                name="specialization" 
+                value={newDoctor.specialization} 
+                onChange={handleInputChange} 
+                className="ai-input" 
+                style={{ width: '100%', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '8px' }}
+                placeholder="e.g. Cardiology" 
+                required 
+              />
+            </div>
+
+            {/* License Number */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#64748b' }}>License Number</label>
+              <input 
+                name="licenceNumber" 
+                value={newDoctor.licenceNumber} 
+                onChange={handleInputChange} 
+                className="ai-input" 
+                style={{ width: '100%', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '8px' }}
+                placeholder="LIC-12345" 
+                required 
+              />
+            </div>
+
+            {/* Contact */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem', color: '#64748b' }}>Contact Number</label>
+              <input 
+                name="contactNumber" 
+                value={newDoctor.contactNumber} 
+                onChange={handleInputChange} 
+                className="ai-input" 
+                style={{ width: '100%', border: '1px solid #cbd5e1', padding: '10px', borderRadius: '8px' }}
+                placeholder="Phone Number" 
+                required 
+              />
+            </div>
+
+          </div>
+          <button type="submit" className="ai-analyze-btn" style={{ marginTop: '15px', width: '100%' }} disabled={isLoading}>
+            {isLoading ? 'Saving...' : 'Save Doctor'}
+          </button>
+        </form>
+      )}
+
+      {/* --- DOCTOR LIST TABLE --- */}
+      <div style={{ overflowX: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
           <thead>
-            <tr>
-              <th>Name</th>
-              <th>Specialization</th>
-              <th>Contact</th>
-              <th>Status</th>
-              <th>Actions</th>
+            <tr style={{ textAlign: 'left', borderBottom: '2px solid #f1f5f9', color: '#64748b' }}>
+              <th style={{ padding: '12px' }}>Name</th>
+              <th style={{ padding: '12px' }}>Specialization</th>
+              <th style={{ padding: '12px' }}>License</th>
+              <th style={{ padding: '12px' }}>Contact</th>
+              <th style={{ padding: '12px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {doctors.map(doctor => (
-              <tr key={doctor.id}>
-                <td>{doctor.name}</td>
-                <td>{doctor.specialization}</td>
-                <td>{doctor.contact}</td>
-                <td>
-                  <span className={`status ${doctor.status.toLowerCase()}`}>
-                    {doctor.status}
-                  </span>
-                </td>
-                <td>
-                  <button className="btn btn-outline" style={{ marginRight: '0.5rem' }}>Edit</button>
-                  <button className="btn btn-danger">Remove</button>
-                </td>
-              </tr>
-            ))}
+            {doctors.length === 0 ? (
+              <tr><td colSpan="5" style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>No doctors found. Add one above!</td></tr>
+            ) : (
+              doctors.map(doctor => (
+                // Handle 'id' vs 'doctorId' depending on backend response
+                <tr key={doctor.doctorId || doctor.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <td style={{ padding: '12px', fontWeight: '500' }}>{doctor.name}</td>
+                  <td style={{ padding: '12px' }}>{doctor.specialization}</td>
+                  <td style={{ padding: '12px' }}>{doctor.licenceNumber}</td>
+                  <td style={{ padding: '12px' }}>{doctor.phoneNumber}</td>
+                  <td style={{ padding: '12px' }}>
+                    <button 
+                      onClick={() => handleDelete(doctor.doctorId || doctor.id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                      title="Remove Doctor"
+                    >
+                      🗑️
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -306,129 +291,115 @@ const DoctorManagement = () => {
   );
 };
 
-const FacilityManagement = () => {
+/* =========================================
+   COMPONENT: DASHBOARD HOME
+   ========================================= */
+const HospitalDashboardHome = () => {
   return (
-    <div className="content-card">
-      <div className="card-header">
-        <h3>🏗️ Facility Management</h3>
-      </div>
-      <div className="card-body">
-        <p>Facility management interface with COCO theme styling</p>
-      </div>
-    </div>
-  );
-};
-
-const BedManagement = () => {
-  const [availableBeds, setAvailableBeds] = useState(45);
-  const [totalBeds, setTotalBeds] = useState(150);
-
-  return (
-    <div className="content-card">
-      <div className="card-header">
-        <h3>🛏️ Bed Management</h3>
-      </div>
-      <div className="card-body">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-          <div className="form-group">
-            <label className="form-label">Total Beds</label>
-            <input 
-              type="number" 
-              className="form-input"
-              value={totalBeds}
-              onChange={(e) => setTotalBeds(e.target.value)}
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Available Beds</label>
-            <input 
-              type="number" 
-              className="form-input"
-              value={availableBeds}
-              onChange={(e) => setAvailableBeds(e.target.value)}
-            />
-          </div>
+    <div className="dashboard-home">
+      {/* Stats Grid */}
+      <div className="stats-container">
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: '#4f46e5' }}>150</div>
+          <div className="stat-label">Total Beds</div>
+          <div style={{ fontSize: '0.8rem', color: '#22c55e', marginTop: '5px' }}>85% Capacity</div>
         </div>
-        <div style={{ marginTop: '2rem', padding: '1rem', background: '#f8f9fa', borderRadius: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>Bed Occupancy Rate</span>
-            <span style={{ fontWeight: 'bold', color: availableBeds/totalBeds < 0.2 ? '#e74c3c' : '#27ae60' }}>
-              {Math.round((1 - availableBeds/totalBeds) * 100)}%
-            </span>
-          </div>
+
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: '#22c55e' }}>45</div>
+          <div className="stat-label">Available Beds</div>
+          <div style={{ fontSize: '0.8rem', color: '#22c55e', marginTop: '5px' }}>Ready for patients</div>
+        </div>
+
+        <div className="stat-card">
+          <div className="stat-value" style={{ color: '#ef4444' }}>12</div>
+          <div className="stat-label">Emergency Req</div>
+          <div style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '5px' }}>↑ 3 New requests</div>
         </div>
       </div>
-    </div>
-  );
-};
 
-const EmergencyRequests = () => {
-  const [requests, setRequests] = useState([
-    { id: 1, patient: 'John Doe', condition: 'Heart Attack', distance: '2.3 km', status: 'Pending' },
-    { id: 2, patient: 'Jane Smith', condition: 'Fracture', distance: '3.1 km', status: 'Pending' },
-    { id: 3, patient: 'Mike Johnson', condition: 'Respiratory', distance: '1.7 km', status: 'Accepted' }
-  ]);
-
-  const handleAccept = (id) => {
-    setRequests(requests.map(req => 
-      req.id === id ? { ...req, status: 'Accepted' } : req
-    ));
-  };
-
-  const handleReject = (id) => {
-    setRequests(requests.map(req => 
-      req.id === id ? { ...req, status: 'Rejected' } : req
-    ));
-  };
-
-  return (
-    <div className="content-card">
-      <div className="card-header">
-        <h3>🚨 Emergency Requests</h3>
+      {/* Recent Emergency Requests */}
+      <div className="card standard-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+          <h3>🚨 Recent Emergency Requests</h3>
+          <button style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontWeight: 'bold' }}>View All</button>
+        </div>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
+              <th style={{ padding: '10px' }}>Patient</th>
+              <th style={{ padding: '10px' }}>Condition</th>
+              <th style={{ padding: '10px' }}>Status</th>
+              <th style={{ padding: '10px' }}>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+              <td style={{ padding: '10px' }}>John Doe</td>
+              <td style={{ padding: '10px' }}>Chest Pain</td>
+              <td style={{ padding: '10px' }}><span style={{ color: '#d97706', background: '#fef3c7', padding: '3px 8px', borderRadius: '10px', fontSize: '0.8rem' }}>Pending</span></td>
+              <td style={{ padding: '10px' }}>
+                <button style={{ marginRight: '5px', border: 'none', background: '#22c55e', color: 'white', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}>✓</button>
+                <button style={{ border: 'none', background: '#ef4444', color: 'white', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}>✕</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-      <div className="card-body">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {requests.map(request => (
-            <div key={request.id} style={{ 
-              padding: '1.5rem', 
-              border: '1px solid #bdc3c7', 
-              borderRadius: '8px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <div>
-                <h4 style={{ marginBottom: '0.5rem' }}>{request.patient}</h4>
-                <p style={{ marginBottom: '0.25rem', color: '#7f8c8d' }}>Condition: {request.condition}</p>
-                <p style={{ color: '#7f8c8d' }}>Distance: {request.distance}</p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span className={`status ${request.status.toLowerCase()}`}>
-                  {request.status}
-                </span>
-                {request.status === 'Pending' && (
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button 
-                      onClick={() => handleAccept(request.id)}
-                      className="btn btn-success"
-                    >
-                      Accept
-                    </button>
-                    <button 
-                      onClick={() => handleReject(request.id)}
-                      className="btn btn-danger"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
+
+      {/* Facility Status */}
+      <div className="card standard-card">
+        <h3>🏥 Facility Status</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px', marginTop: '15px', textAlign: 'center' }}>
+          <div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#3b82f6' }}>ICU</div>
+            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>12/15</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#22c55e' }}>OT</div>
+            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>4/6</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#ef4444' }}>ER</div>
+            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>8/10</div>
+          </div>
+          <div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: '#f59e0b' }}>WARD</div>
+            <div style={{ fontSize: '0.85rem', color: '#64748b' }}>45/60</div>
+          </div>
         </div>
       </div>
     </div>
   );
 };
+
+/* =========================================
+   OTHER COMPONENTS (Static Placeholders)
+   ========================================= */
+const FacilityManagement = () => (
+  <div className="card standard-card">
+    <h3>🏗️ Facility Management</h3>
+    <p style={{ color: '#64748b', marginTop: '10px' }}>Manage hospital infrastructure, OTs, and equipment here.</p>
+  </div>
+);
+
+const BedManagement = () => (
+  <div className="card standard-card">
+    <h3>🛏️ Bed Management</h3>
+    <div style={{ marginTop: '20px' }}>
+       <div style={{ marginBottom: '15px' }}>
+         <label style={{ display: 'block', marginBottom: '5px' }}>Total Beds</label>
+         <input type="number" defaultValue={150} className="ai-input" style={{ border: '1px solid #cbd5e1', padding: '8px', borderRadius: '8px' }} />
+       </div>
+    </div>
+  </div>
+);
+
+const EmergencyRequests = () => (
+  <div className="card standard-card">
+    <h3>🚨 Emergency Requests</h3>
+    <p style={{ color: '#64748b', marginTop: '10px' }}>Live incoming emergency requests from patients.</p>
+  </div>
+);
 
 export default HospitalDashboard;
