@@ -1,30 +1,51 @@
-// src/pages/Auth/UserSignup.js
 import React, { useState } from 'react';
+import api from '../../api'; // ✅ Import API connection
 import '../../styles/Auth.css';
 
-const UserSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
+const UserSignup = ({ onSwitchToLogin, onBack }) => {
   const [formData, setFormData] = useState({
     name: '',
     age: '',
     gender: '',
-    contact: '',
+    contact: '', // This maps to PhoneNumber in DB
     bloodGroup: ''
   });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.age || !formData.gender || !formData.contact || !formData.bloodGroup) {
-      alert('Please fill all fields');
-      return;
-    }
-    onSignup();
-  };
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // Prepare data to match SQL 'dbo.Patients' schema exactly
+    const payload = {
+      name: formData.name,
+      age: parseInt(formData.age), // Database expects an Integer
+      phoneNumber: formData.contact, // Database column is PhoneNumber
+      gender: formData.gender,
+      bloodGroup: formData.bloodGroup
+    };
+
+    try {
+      // POST request to create new patient
+      await api.post('/Patients', payload);
+      
+      alert("Registration Successful! Please Login.");
+      onSwitchToLogin(); // Go to login page
+
+    } catch (error) {
+      console.error("Signup Error:", error);
+      alert("Registration failed: " + (error.response?.data?.message || "Server Error"));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -97,9 +118,9 @@ const UserSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
                     required
                   >
                     <option value="">Select Gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
                   </select>
                 </div>
               </div>
@@ -148,8 +169,8 @@ const UserSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
               </div>
             </div>
 
-            <button type="submit" className="auth-btn">
-              🏥 Create Medical Profile
+            <button type="submit" className="auth-btn" disabled={isLoading}>
+              {isLoading ? "Creating Profile..." : "🏥 Create Medical Profile"}
             </button>
           </form>
 
@@ -161,10 +182,6 @@ const UserSignup = ({ onSignup, onSwitchToLogin, onBack }) => {
               </span>
             </p>
           </div>
-
-          <p className="terms-text">
-            By creating an account, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
-          </p>
         </div>
       </div>
     </div>

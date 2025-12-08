@@ -1,13 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
+import api from '../../api'; // ✅ Import API
 import NearbyHospitals from "./NearbyHospitals";
 import '../../styles/Dashboard.css';
-import '../../styles/Chatbot.css'; // Make sure this CSS file exists!
+import '../../styles/Chatbot.css'; 
 
-// --- 1. CHATBOT COMPONENT (Integrated) ---
+// --- 1. CHATBOT COMPONENT (Unchanged) ---
 const MedicalChatbot = () => {
-    // 🔴 YOUR KEY
     const GROQ_API_KEY = process.env.REACT_APP_GROQ_API_KEY; 
-
     const [messages, setMessages] = useState([
         { 
             id: 1, 
@@ -73,16 +72,11 @@ const MedicalChatbot = () => {
             });
 
             const data = await response.json();
-            
-            if (!response.ok) {
-                const errMsg = data.error?.message || "API Error";
-                throw new Error(errMsg);
-            }
+            if (!response.ok) throw new Error(data.error?.message || "API Error");
 
             const aiText = data.choices[0].message.content;
             const formattedText = formatResponse(aiText);
             const isCritical = aiText.includes("CRITICAL") || aiText.includes("WARNING");
-
             addBotMessage(formattedText, isCritical);
 
         } catch (error) {
@@ -145,7 +139,6 @@ const MedicalChatbot = () => {
                     <div className="chip" onClick={() => handleSend('I have a bad headache')}>🤕 Headache</div>
                     <div className="chip" onClick={() => handleSend('I burned my hand')}>🔥 Burn</div>
                     <div className="chip" onClick={() => handleSend('Stomach pain')}>🤢 Stomach</div>
-                    <div className="chip" onClick={() => handleSend('Cold and cough')}>🤧 Flu</div>
                 </div>
                 <div className="chat-input-area">
                     <input 
@@ -155,19 +148,14 @@ const MedicalChatbot = () => {
                         onChange={(e) => setInput(e.target.value)}
                         onKeyPress={(e) => e.key === 'Enter' && handleSend()}
                     />
-                    <button className="send-btn" onClick={() => handleSend()}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
-                    </button>
+                    <button className="send-btn" onClick={() => handleSend()}>➡️</button>
                 </div>
             </div>
         </div>
     );
 };
 
-// --- 2. DASHBOARD HOME (Action Center) ---
+// --- 2. DASHBOARD HOME (Unchanged) ---
 const DashboardHome = ({ onNavigate }) => {
   const liveStats = [
     { label: 'Active Hospitals', value: '12', color: '#2ecc71' },
@@ -241,11 +229,94 @@ const DashboardHome = ({ onNavigate }) => {
 };
 
 const EmergencyAssistance = () => <div className="content-card"><h3>🚨 Emergency Assistance Active</h3><p>Connecting to nearest ambulance...</p></div>;
-const UserProfile = () => <div className="content-card"><h3>👤 User Profile</h3><p>Manage your health records here.</p></div>;
 
-// --- 3. MAIN DASHBOARD CONTAINER ---
+// --- 3. USER PROFILE (UPDATED - Fetches from DB) ---
+const UserProfile = () => {
+    const [profile, setProfile] = useState(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        // Get the phone number saved during login
+        const phone = localStorage.getItem('userPhone');
+        
+        if (phone) {
+            fetchProfile(phone);
+        } else {
+            setLoading(false); // No phone found
+        }
+    }, []);
+
+    const fetchProfile = async (phone) => {
+        try {
+            // NOTE: You need to create this endpoint in your C# backend:
+            // GET /api/Patients/profile/{phoneNumber}
+            // Or assume we filter the list (Not recommended for production but works for now if you lack the specific endpoint)
+            const response = await api.get(`/Patients`); 
+            
+            // Temporary Logic: Filter client-side until specific endpoint is made
+            const myProfile = response.data.find(p => p.phoneNumber === phone);
+            setProfile(myProfile);
+
+        } catch (error) {
+            console.error("Error fetching profile:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) return <div className="content-card">Loading Profile...</div>;
+    if (!profile) return <div className="content-card"><h3>Profile Not Found</h3><p>Could not load details for the logged-in number.</p></div>;
+
+    return (
+        <div className="content-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
+                <div style={{ width: '80px', height: '80px', background: '#4f46e5', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold' }}>
+                    {profile.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                    <h2 style={{ margin: 0 }}>{profile.name}</h2>
+                    <p style={{ color: '#64748b', margin: '5px 0' }}>Patient ID: #{profile.patientId}</p>
+                </div>
+            </div>
+
+            <div className="card standard-card">
+                <h3>📋 Medical Details</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '15px' }}>
+                    <div>
+                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Age</label>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.age} Years</div>
+                    </div>
+                    <div>
+                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Gender</label>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.gender}</div>
+                    </div>
+                    <div>
+                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Blood Group</label>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '500', color: '#ef4444' }}>{profile.bloodGroup}</div>
+                    </div>
+                    <div>
+                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Contact</label>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.phoneNumber}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- 4. MAIN DASHBOARD CONTAINER ---
 const UserDashboard = ({ onLogout }) => {
   const [activeModule, setActiveModule] = useState('dashboard');
+  const [userName, setUserName] = useState('User');
+
+  // Optional: Fetch user name for header
+  useEffect(() => {
+    const phone = localStorage.getItem('userPhone');
+    if(phone) {
+        // Fetch logic could go here to update header name
+        // For now, we keep it simple
+    }
+  }, []);
 
   const menuItems = [
     { key: 'dashboard', icon: '📊', label: 'Dashboard', description: 'Overview' },
@@ -291,7 +362,7 @@ const UserDashboard = ({ onLogout }) => {
           ))}
         </nav>
         <div className="sidebar-footer">
-          <button className="nav-item logout-btn" onClick={onLogout}>
+          <button className="nav-item logout-btn" onClick={() => { localStorage.removeItem('userPhone'); onLogout(); }}>
             <span className="nav-icon">🚪</span>
             <span className="nav-label">Logout</span>
           </button>
@@ -302,11 +373,11 @@ const UserDashboard = ({ onLogout }) => {
         <header className="top-header">
           <div className="header-greeting">
             <h1>{menuItems.find(item => item.key === activeModule)?.label}</h1>
-            <p>Welcome back, User</p>
+            <p>Welcome back, {userName}</p>
           </div>
           <div className="header-actions">
             <button className="notif-btn">🔔</button>
-            <div className="user-avatar">U</div>
+            <div className="user-avatar">{userName.charAt(0)}</div>
           </div>
         </header>
 

@@ -75,6 +75,7 @@ const UserLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
     }
 
     if (enteredOtp === '123456') {
+       localStorage.setItem('userPhone', phone);
       onLogin();
     } else {
       alert('Invalid OTP. Please try again.');
