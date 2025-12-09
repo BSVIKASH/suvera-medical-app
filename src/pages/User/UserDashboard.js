@@ -231,32 +231,33 @@ const DashboardHome = ({ onNavigate }) => {
 const EmergencyAssistance = () => <div className="content-card"><h3>🚨 Emergency Assistance Active</h3><p>Connecting to nearest ambulance...</p></div>;
 
 // --- 3. USER PROFILE (UPDATED - Fetches from DB) ---
+// --- 3. USER PROFILE (UPDATED WITH EDIT) ---
 const UserProfile = () => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [isEditing, setIsEditing] = useState(false);
+    
+    // State for the Edit Form
+    const [editData, setEditData] = useState({});
 
     useEffect(() => {
-        // Get the phone number saved during login
         const phone = localStorage.getItem('userPhone');
-        
         if (phone) {
             fetchProfile(phone);
         } else {
-            setLoading(false); // No phone found
+            setLoading(false);
         }
     }, []);
 
     const fetchProfile = async (phone) => {
         try {
-            // NOTE: You need to create this endpoint in your C# backend:
-            // GET /api/Patients/profile/{phoneNumber}
-            // Or assume we filter the list (Not recommended for production but works for now if you lack the specific endpoint)
+            // Fetch all patients and find the specific user
+            // ( Ideally, your backend should have GET /api/Patients/by-phone/{phone} )
             const response = await api.get(`/Patients`); 
-            
-            // Temporary Logic: Filter client-side until specific endpoint is made
             const myProfile = response.data.find(p => p.phoneNumber === phone);
+            
             setProfile(myProfile);
-
+            setEditData(myProfile); // Initialize edit form with current data
         } catch (error) {
             console.error("Error fetching profile:", error);
         } finally {
@@ -264,40 +265,155 @@ const UserProfile = () => {
         }
     };
 
+    // Handle Input Changes in Edit Mode
+    const handleInputChange = (e) => {
+        setEditData({
+            ...editData,
+            [e.target.name]: e.target.value
+        });
+    };
+
+    // Save Changes to Database
+    const handleSave = async () => {
+        try {
+            // Send PUT request to C# Backend
+            // Endpoint: PUT /api/Patients/{id}
+            await api.put(`/Patients/${profile.patientId}`, editData);
+            
+            // Update UI
+            setProfile(editData);
+            setIsEditing(false);
+            alert("Profile updated successfully!");
+        } catch (error) {
+            console.error("Error updating profile:", error);
+            alert("Failed to update profile. " + (error.response?.data?.message || "Check console."));
+        }
+    };
+
+    const handleCancel = () => {
+        setEditData(profile); // Reset changes
+        setIsEditing(false);
+    };
+
     if (loading) return <div className="content-card">Loading Profile...</div>;
-    if (!profile) return <div className="content-card"><h3>Profile Not Found</h3><p>Could not load details for the logged-in number.</p></div>;
+    if (!profile) return <div className="content-card"><h3>Profile Not Found</h3><p>Could not load details.</p></div>;
 
     return (
         <div className="content-card">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '20px' }}>
-                <div style={{ width: '80px', height: '80px', background: '#4f46e5', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold' }}>
-                    {profile.name.charAt(0).toUpperCase()}
+            {/* Header Section */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '80px', height: '80px', background: '#4f46e5', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', fontWeight: 'bold' }}>
+                        {profile.name ? profile.name.charAt(0).toUpperCase() : 'U'}
+                    </div>
+                    <div>
+                        {isEditing ? (
+                             <input 
+                             type="text" 
+                             name="name"
+                             value={editData.name}
+                             onChange={handleInputChange}
+                             className="ai-input"
+                             style={{ fontSize: '1.5rem', fontWeight: 'bold', width: '200px', marginBottom: '5px' }}
+                         />
+                        ) : (
+                            <h2 style={{ margin: 0 }}>{profile.name}</h2>
+                        )}
+                        <p style={{ color: '#64748b', margin: '5px 0' }}>Patient ID: #{profile.patientId}</p>
+                    </div>
                 </div>
+
+                {/* Edit/Save Buttons */}
                 <div>
-                    <h2 style={{ margin: 0 }}>{profile.name}</h2>
-                    <p style={{ color: '#64748b', margin: '5px 0' }}>Patient ID: #{profile.patientId}</p>
+                    {isEditing ? (
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                            <button onClick={handleSave} className="ai-analyze-btn" style={{ background: '#22c55e', padding: '8px 16px' }}>Save</button>
+                            <button onClick={handleCancel} className="ai-analyze-btn" style={{ background: '#ef4444', padding: '8px 16px' }}>Cancel</button>
+                        </div>
+                    ) : (
+                        <button onClick={() => setIsEditing(true)} className="ai-analyze-btn">
+                            ✏️ Edit Profile
+                        </button>
+                    )}
                 </div>
             </div>
 
+            {/* Details Card */}
             <div className="card standard-card">
                 <h3>📋 Medical Details</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '15px' }}>
+                    
+                    {/* AGE */}
                     <div>
-                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Age</label>
-                        <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.age} Years</div>
+                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>Age</label>
+                        {isEditing ? (
+                            <input 
+                                type="number" 
+                                name="age"
+                                value={editData.age}
+                                onChange={handleInputChange}
+                                className="ai-input"
+                                style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                            />
+                        ) : (
+                            <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.age} Years</div>
+                        )}
                     </div>
+
+                    {/* GENDER */}
                     <div>
-                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Gender</label>
-                        <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.gender}</div>
+                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>Gender</label>
+                        {isEditing ? (
+                             <select 
+                                name="gender"
+                                value={editData.gender}
+                                onChange={handleInputChange}
+                                className="ai-input"
+                                style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                             >
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                                <option value="Other">Other</option>
+                             </select>
+                        ) : (
+                            <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.gender}</div>
+                        )}
                     </div>
+
+                    {/* BLOOD GROUP */}
                     <div>
-                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Blood Group</label>
-                        <div style={{ fontSize: '1.1rem', fontWeight: '500', color: '#ef4444' }}>{profile.bloodGroup}</div>
+                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>Blood Group</label>
+                        {isEditing ? (
+                            <select 
+                                name="bloodGroup"
+                                value={editData.bloodGroup}
+                                onChange={handleInputChange}
+                                className="ai-input"
+                                style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
+                            >
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                            </select>
+                        ) : (
+                            <div style={{ fontSize: '1.1rem', fontWeight: '500', color: '#ef4444' }}>{profile.bloodGroup}</div>
+                        )}
                     </div>
+
+                    {/* CONTACT (Read Only) */}
                     <div>
-                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block' }}>Contact</label>
-                        <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.phoneNumber}</div>
+                        <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>Contact</label>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '500', color: '#64748b' }}>
+                            {profile.phoneNumber} 
+                            {isEditing && <span style={{fontSize: '0.7rem', color: '#ef4444', marginLeft: '5px'}}>(Cannot change)</span>}
+                        </div>
                     </div>
+
                 </div>
             </div>
         </div>
