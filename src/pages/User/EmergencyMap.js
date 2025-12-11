@@ -17,7 +17,7 @@ let DefaultIcon = L.icon({
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- Icons ---
+// --- Custom Icons ---
 const userIcon = L.divIcon({
     className: 'user-marker',
     html: '<div style="background-color:#3498db; width:20px; height:20px; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>',
@@ -63,7 +63,6 @@ const EmergencyMap = ({ symptomData, onBack }) => {
         setMap(mapInstance);
 
         return () => { if (mapInstance) mapInstance.remove(); };
-        // eslint-disable-next-line
     }, []);
 
     // 2. Fetch Logic
@@ -84,11 +83,11 @@ const EmergencyMap = ({ symptomData, onBack }) => {
             (err) => setStatusMsg("Location Access Denied."),
             { enableHighAccuracy: true }
         );
-        // eslint-disable-next-line
     }, [map]);
 
     const fetchBackendHospitals = async (lat, lng) => {
         try {
+            // Ensure this PORT is correct (7189 based on your previous messages)
             const response = await fetch(`https://localhost:7189/api/hospitals/search?specialty=${specialty}`);
             if(!response.ok) throw new Error("Failed");
             const data = await response.json();
@@ -140,64 +139,71 @@ const EmergencyMap = ({ symptomData, onBack }) => {
         routingControlRef.current = control;
     };
 
-    // --- STYLES THAT FIX THE PURPLE SCREEN ---
+    // --- STYLES (THE FIX) ---
+    // Forced White backgrounds on all containers
     
-    const wrapperStyle = {
-        position: 'fixed', 
-        top: 0, left: 0, width: '100vw', height: '100vh', 
-        backgroundColor: '#ffffff', // ✅ THIS LINE KILLS THE PURPLE COLOR
-        zIndex: 9999
-    };
-
-    const headerStyle = {
-        position: 'absolute', top: 0, left: 0, right: 0, height: '60px',
-        background: '#c0392b', color: 'white', padding: '0 20px', 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-        zIndex: 10, boxShadow: '0 2px 10px rgba(0,0,0,0.2)'
-    };
-
-    const sidebarStyle = {
-        position: 'absolute', top: '60px', left: 0, bottom: 0, width: '350px',
-        background: 'white', borderRight: '1px solid #ccc', zIndex: 5, overflowY: 'auto',
-        boxShadow: '2px 0 5px rgba(0,0,0,0.1)'
-    };
-
-    const mapContainerStyle = {
-        position: 'absolute', top: 0, left: 0, width: '100%', height: '100%',
-        zIndex: 1, backgroundColor: '#e5e5e5' // Fallback color
-    };
-
     return (
-        <div style={wrapperStyle}>
+        <div style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            width: '100vw', 
+            height: '100vh', 
+            backgroundColor: '#ffffff', // Kills the purple body background
+            zIndex: 2147483647, // Highest possible Z-Index
+            display: 'flex', 
+            flexDirection: 'column'
+        }}>
+            
             {/* Header */}
-            <div style={headerStyle}>
+            <div style={{ 
+                background: '#c0392b', 
+                color: 'white', 
+                padding: '15px 20px', 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                boxShadow: '0 2px 10px rgba(0,0,0,0.2)', 
+                zIndex: 10,
+                flexShrink: 0
+            }}>
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '1.2rem' }}>🚨 EMERGENCY: {specialty}</h2>
-                    <small style={{ fontWeight: 'bold' }}>Auto-routing active</small>
+                    <h2 style={{ margin: 0, fontSize: '1.4rem' }}>🚨 EMERGENCY: {specialty}</h2>
+                    <small style={{ fontWeight: 'bold' }}>Auto-routing to nearest center</small>
                 </div>
                 <button onClick={onBack} style={{ background: 'white', color: '#c0392b', border: 'none', padding: '8px 20px', borderRadius: '4px', fontWeight: 'bold', cursor:'pointer' }}>EXIT</button>
             </div>
 
-            {/* Sidebar */}
-            <div style={sidebarStyle}>
-                {routeInfo && <div style={{ background: '#ffebee', padding: '15px', color: '#c62828', fontWeight: 'bold', borderBottom: '1px solid #ffcdd2' }}>⏱ ETA to Nearest <br/><span style={{fontSize:'1.3rem'}}>{routeInfo}</span></div>}
+            <div style={{ display: 'flex', flex: 1, position: 'relative', overflow: 'hidden' }}>
                 
-                <div style={{ padding: '15px' }}>
-                    {hospitals.map((h, i) => (
-                        <div key={i} onClick={() => userLoc && drawRoute(userLoc, [h.latitude, h.longitude], map)} 
-                                style={{ border: i===0?'2px solid #e53935':'1px solid #eee', borderRadius: '8px', padding: '15px', marginBottom: '10px', background: 'white', cursor: 'pointer' }}>
-                            <strong style={{color:'#c62828', fontSize:'1.1rem'}}>{h.name}</strong>
-                            <p style={{ margin: '5px 0', fontSize: '0.9rem', color: '#555' }}>{h.address}</p>
-                            <strong style={{color: '#333'}}>📞 {h.phoneNumber}</strong>
-                            {i===0 && <div style={{color:'red', fontSize:'0.8rem', marginTop:'5px'}}>📍 Nearest Recommendation</div>}
-                        </div>
-                    ))}
-                    {hospitals.length === 0 && <p>{statusMsg}</p>}
+                {/* Sidebar */}
+                <div style={{ 
+                    width: '350px', 
+                    backgroundColor: '#ffffff', // Force White
+                    borderRight: '1px solid #ccc', 
+                    zIndex: 5, 
+                    overflowY: 'auto', 
+                    boxShadow: '2px 0 5px rgba(0,0,0,0.1)' 
+                }}>
+                    {routeInfo && <div style={{ background: '#ffebee', padding: '15px', color: '#c62828', fontWeight: 'bold', borderBottom: '1px solid #ffcdd2' }}>⏱ ETA to Nearest <br/><span style={{fontSize:'1.3rem'}}>{routeInfo}</span></div>}
+                    
+                    <div style={{ padding: '15px' }}>
+                        {hospitals.map((h, i) => (
+                            <div key={i} onClick={() => userLoc && drawRoute(userLoc, [h.latitude, h.longitude], map)} 
+                                 style={{ border: i===0?'2px solid #e53935':'1px solid #eee', borderRadius: '8px', padding: '15px', marginBottom: '10px', background: 'white', cursor: 'pointer' }}>
+                                <strong style={{color:'#c62828', fontSize:'1.1rem'}}>{h.name}</strong>
+                                <p style={{ margin: '5px 0', fontSize: '0.9rem', color: '#555' }}>{h.address}</p>
+                                <strong style={{color: '#333'}}>📞 {h.phoneNumber}</strong>
+                                {i===0 && <div style={{color:'red', fontSize:'0.8rem', marginTop:'5px'}}>📍 Nearest Recommendation</div>}
+                            </div>
+                        ))}
+                        {hospitals.length === 0 && <p>{statusMsg}</p>}
+                    </div>
                 </div>
-            </div>
 
-            {/* Map - ABSOLUTE POSITIONING TO FILL SCREEN */}
-            <div ref={mapRef} style={mapContainerStyle} />
+                {/* Map - Explicit Background Color Added */}
+                <div ref={mapRef} style={{ flex: 1, height: '100%', backgroundColor: '#ffffff', zIndex: 1 }} />
+            </div>
 
             <style>{`.leaflet-routing-container { display: none !important; }`}</style>
         </div>

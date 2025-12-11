@@ -9,12 +9,17 @@ const HospitalSignup = ({ onSwitchToLogin, onBack }) => {
     address: '',
     email: '',
     contact: '',
-    licenceNumber: '', // ✅ Added this to match Database
+    licenceNumber: '', 
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    latitude: '',  
+    longitude: ''  
   });
 
   const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ FIX: Added the missing state variable for the location loading spinner
+  const [locating, setLocating] = useState(false);
 
   // Handle Input Changes
   const handleChange = (e) => {
@@ -24,44 +29,77 @@ const HospitalSignup = ({ onSwitchToLogin, onBack }) => {
     });
   };
 
+   // Get Current Location Function
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    
+    setLocating(true); // Now this works because the state is defined above
+    
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setFormData(prev => ({
+          ...prev,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        }));
+        setLocating(false);
+        alert("📍 Location captured successfully!");
+      },
+      (error) => {
+        console.error(error);
+        alert("Unable to retrieve location. Please enter manually.");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
   // Handle Form Submission
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // 1. Validation
+    // 1. Password Validation
     if (formData.password !== formData.confirmPassword) {
       alert('Passwords do not match');
       return;
     }
 
+    // 2. Location Validation
+    if (!formData.latitude || !formData.longitude) {
+      alert("Please capture the hospital location (Auto-Detect or Enter Manually).");
+      return;
+    }
+
     setIsLoading(true);
 
-    // 2. Prepare Data for Backend
-    // Keys here must match the C# DTO exactly (case-insensitive usually, but strict spelling)
+    // 3. Prepare Data for Backend
     const payload = {
       name: formData.hospitalName,
       address: formData.address,
-      phoneNumber: formData.contact,     // Matches 'PhoneNumber' in DB
-      licenceNumber: formData.licenceNumber, // Matches 'LicenceNumber' in DB
+      phoneNumber: formData.contact,
+      licenceNumber: formData.licenceNumber,
       email: formData.email,
-      password: formData.password
+      password: formData.password,
+      latitude: parseFloat(formData.latitude),
+      longitude: parseFloat(formData.longitude)
     };
 
     try {
-      // 3. Send Data to C#
-      // This hits: POST https://localhost:7189/api/Auth/register
+      // 4. Send Data to C#
       const response = await api.post('/Auth/register', payload);
       
       console.log("Registration Success:", response.data);
       alert("Registration Successful! Please Login.");
       
-      // 4. Redirect to Login Page
+      // 5. Redirect to Login Page
       onSwitchToLogin();
 
     } catch (error) {
       console.error("Registration Error:", error);
-      // Show the error message from the backend (e.g., "Email already exists")
-      alert(error.response?.data || "Registration failed. Please check your connection.");
+      alert(error.response?.data?.message || "Registration failed. Please check your connection.");
     } finally {
       setIsLoading(false);
     }
@@ -117,6 +155,18 @@ const HospitalSignup = ({ onSwitchToLogin, onBack }) => {
               />
             </div>
 
+            {/* Location Section */}
+            <div className="form-group" style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #dee2e6' }}>
+                <label style={{fontWeight:'bold'}}>🌍 Hospital Geolocation (For Map)</label>
+                <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                    <input type="number" step="any" placeholder="Latitude" name="latitude" value={formData.latitude} onChange={handleChange} className="form-input" required />
+                    <input type="number" step="any" placeholder="Longitude" name="longitude" value={formData.longitude} onChange={handleChange} className="form-input" required />
+                </div>
+                <button type="button" onClick={handleGetLocation} className="auth-btn" style={{ marginTop: '10px', background: '#27ae60' }}>
+                    {locating ? "📍 Locating..." : "📍 Auto-Detect My Location"}
+                </button>
+            </div>
+
             {/* Email & Contact */}
             <div className="form-row">
               <div className="form-group">
@@ -148,7 +198,7 @@ const HospitalSignup = ({ onSwitchToLogin, onBack }) => {
               </div>
             </div>
 
-            {/* ✅ NEW: License Number (Required by Database) */}
+            {/* License Number */}
             <div className="form-group">
               <label htmlFor="licenceNumber">📄 License Number</label>
               <input

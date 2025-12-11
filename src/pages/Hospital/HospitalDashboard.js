@@ -58,7 +58,7 @@ const HospitalDashboard = ({ onLogout }) => {
       <aside className="sidebar">
         <div className="sidebar-header">
           <div className="logo-icon">🏥</div>
-          <div className="app-name">Suvera</div>
+          <div className="app-name">Medipath</div>
         </div>
         
         <nav className="sidebar-nav">

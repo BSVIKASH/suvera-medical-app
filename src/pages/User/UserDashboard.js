@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import api from '../../api'; // ✅ Import API
 import NearbyHospitals from "./NearbyHospitals";
+import EmergencyMap from "./EmergencyMap"; // ✅ IMPORT NEW EMERGENCY MAP
 import '../../styles/Dashboard.css';
 import '../../styles/Chatbot.css'; 
 
-// --- 1. CHATBOT COMPONENT (Unchanged) ---
+// --- 1. CHATBOT COMPONENT (FULLY RESTORED) ---
 const MedicalChatbot = () => {
     const GROQ_API_KEY = process.env.REACT_APP_GROQ_API_KEY; 
     const [messages, setMessages] = useState([
@@ -155,29 +156,76 @@ const MedicalChatbot = () => {
     );
 };
 
-// --- 2. DASHBOARD HOME (Unchanged) ---
-const DashboardHome = ({ onNavigate }) => {
+// --- 2. DASHBOARD HOME (✅ MODIFIED: CONNECTS TO PYTHON AI) ---
+const DashboardHome = ({ onNavigate, onTriggerEmergency }) => {
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
   const liveStats = [
     { label: 'Active Hospitals', value: '12', color: '#2ecc71' },
     { label: 'Avg Wait Time', value: '8 min', color: '#3498db' },
     { label: 'ICU Availability', value: 'High', color: '#e67e22' }
   ];
 
+  // 🔴 NEW LOGIC: Call Python API when "Analyze" is clicked
+  const handleAnalyze = async () => {
+    if (!input.trim()) return alert("Please enter your symptoms.");
+    setLoading(true);
+
+    try {
+        const formData = new FormData();
+        formData.append("text", input); 
+
+        const response = await fetch("http://127.0.0.1:8000/analyze-text/", {
+            method: "POST",
+            body: formData
+        });
+
+        if (!response.ok) throw new Error("AI Offline");
+        const data = await response.json();
+        
+        // Pass the analysis result (which contains the Department) back to the parent
+        onTriggerEmergency(data.analysis);
+
+    } catch (error) {
+        console.error(error);
+        alert("Error connecting to AI. Please try again.");
+    } finally {
+        setLoading(false);
+    }
+  };
+
   return (
     <div className="dashboard-home fade-in">
       <section className="dashboard-hero">
         <div className="hero-content-left">
-          <h2><span className="wave">👋</span> How can Suvera help?</h2>
+          <h2><span className="wave">👋</span> How can Suvera help you ?</h2>
           <p className="hero-subtitle">AI-powered symptom analysis & specialist matching.</p>
+          
+          {/* 🔴 NEW INPUT & BUTTON CONNECTED TO LOGIC */}
           <div className="ai-input-wrapper">
             <span className="ai-icon">🧠</span>
-            <input type="text" placeholder="Describe symptoms..." className="ai-input" />
-            <button className="ai-analyze-btn" onClick={() => onNavigate('chatbot')}>Analyze</button>
+            <input 
+                type="text" 
+                placeholder="Describe symptoms..." 
+                className="ai-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAnalyze()}
+            />
+            <button 
+                className="ai-analyze-btn" 
+                onClick={handleAnalyze} 
+                disabled={loading}
+            >
+                {loading ? 'Thinking...' : 'Analyze'}
+            </button>
           </div>
+
           <div className="quick-tags">
             <span>Try:</span>
-            <button className="tag" onClick={() => onNavigate('chatbot')}>Stomach ache</button>
-            <button className="tag" onClick={() => onNavigate('chatbot')}>Trauma</button>
+            <button className="tag" onClick={() => setInput("Stomach ache")}>Stomach ache</button>
+            <button className="tag" onClick={() => setInput("Trauma from accident")}>Trauma</button>
           </div>
         </div>
         <div className="hero-visual">
@@ -230,8 +278,7 @@ const DashboardHome = ({ onNavigate }) => {
 
 const EmergencyAssistance = () => <div className="content-card"><h3>🚨 Emergency Assistance Active</h3><p>Connecting to nearest ambulance...</p></div>;
 
-// --- 3. USER PROFILE (UPDATED - Fetches from DB) ---
-// --- 3. USER PROFILE (UPDATED WITH EDIT) ---
+// --- 3. USER PROFILE (FULLY RESTORED) ---
 const UserProfile = () => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -252,7 +299,6 @@ const UserProfile = () => {
     const fetchProfile = async (phone) => {
         try {
             // Fetch all patients and find the specific user
-            // ( Ideally, your backend should have GET /api/Patients/by-phone/{phone} )
             const response = await api.get(`/Patients`); 
             const myProfile = response.data.find(p => p.phoneNumber === phone);
             
@@ -276,8 +322,6 @@ const UserProfile = () => {
     // Save Changes to Database
     const handleSave = async () => {
         try {
-            // Send PUT request to C# Backend
-            // Endpoint: PUT /api/Patients/{id}
             await api.put(`/Patients/${profile.patientId}`, editData);
             
             // Update UI
@@ -420,19 +464,30 @@ const UserProfile = () => {
     );
 };
 
-// --- 4. MAIN DASHBOARD CONTAINER ---
-const UserDashboard = ({ onLogout }) => {
-  const [activeModule, setActiveModule] = useState('dashboard');
+// --- 4. MAIN DASHBOARD CONTAINER (✅ MODIFIED TO HANDLE AI RESULTS) ---
+const UserDashboard = ({ onLogout, initialMode = "dashboard", emergencyContext = null }) => {
+  const [activeModule, setActiveModule] = useState(initialMode);
+  // Default Data or passed via Props
+  const [currentEmergencyData, setCurrentEmergencyData] = useState(
+      emergencyContext || { specialty: "Emergency", isCritical: true }
+  );
+  
   const [userName, setUserName] = useState('User');
 
-  // Optional: Fetch user name for header
   useEffect(() => {
-    const phone = localStorage.getItem('userPhone');
-    if(phone) {
-        // Fetch logic could go here to update header name
-        // For now, we keep it simple
-    }
-  }, []);
+    if (initialMode) setActiveModule(initialMode);
+    // If context passed from Voice (App.js), update state
+    if (emergencyContext) setCurrentEmergencyData(emergencyContext);
+  }, [initialMode, emergencyContext]);
+
+  // 🔴 LOGIC TO SWITCH VIEW WHEN DASHBOARD "ANALYZE" IS USED
+  const handleAiTransition = (analysisResult) => {
+      const specialty = analysisResult.disease_info.top_department;
+      const isCritical = analysisResult.final_status === "Critical";
+      
+      setCurrentEmergencyData({ specialty, isCritical });
+      setActiveModule('emergency');
+  };
 
   const menuItems = [
     { key: 'dashboard', icon: '📊', label: 'Dashboard', description: 'Overview' },
@@ -443,15 +498,20 @@ const UserDashboard = ({ onLogout }) => {
   ];
 
   if (activeModule === 'nearby') {
-    return <NearbyHospitals onBack={() => setActiveModule('dashboard')} />;
+    return <NearbyHospitals onBack={() => setActiveModule('dashboard')} searchSpecialty="General" />;
+  }
+
+  // Uses local State "currentEmergencyData" which comes from Voice OR Dashboard Analyze
+  if (activeModule === 'emergency') {
+    return <EmergencyMap onBack={onLogout} symptomData={currentEmergencyData} />;
   }
 
   const renderModule = () => {
     switch(activeModule) {
-      case 'emergency': return <EmergencyAssistance />;
       case 'chatbot': return <MedicalChatbot />;
       case 'profile': return <UserProfile />;
-      default: return <DashboardHome onNavigate={setActiveModule} />;
+      // Pass the transition handler down
+      default: return <DashboardHome onNavigate={setActiveModule} onTriggerEmergency={handleAiTransition} />;
     }
   };
 
@@ -467,7 +527,10 @@ const UserDashboard = ({ onLogout }) => {
             <button 
               key={item.key}
               className={`nav-item ${activeModule === item.key ? 'active' : ''}`}
-              onClick={() => setActiveModule(item.key)}
+              onClick={() => {
+                  if(item.key === 'emergency') setCurrentEmergencyData({ specialty: "Emergency", isCritical: true });
+                  setActiveModule(item.key);
+              }}
             >
               <span className="nav-icon">{item.icon}</span>
               <div className="nav-text">

@@ -65,7 +65,7 @@ const HospitalLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
     <div className="auth-container">
       <nav className="auth-nav">
         <div className="auth-nav-content">
-          <h1>🏥 Suvera Health</h1>
+          <h1>🏥 Medipath Health</h1>
           <button className="back-button" onClick={onBack}>
             ← Back to Home
           </button>
