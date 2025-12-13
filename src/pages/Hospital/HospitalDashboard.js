@@ -1,4 +1,3 @@
-// src/pages/Hospital/HospitalDashboard.js
 import React, { useState, useEffect } from 'react';
 import api from '../../api'; // Ensure this points to your Axios instance
 import '../../styles/Dashboard.css';
@@ -22,16 +21,14 @@ const HospitalDashboard = ({ onLogout }) => {
       totalBeds: parseInt(newTotal) || 0,
       occupiedBeds: parseInt(newOccupied) || 0
     });
-    // Optional: Call API here to persist bed stats to DB
-    // api.post('/Hospital/Beds', { total: newTotal, occupied: newOccupied });
   };
 
   const menuItems = [
     { key: 'dashboard', icon: '📊', label: 'Dashboard', description: 'Hospital overview' },
+    { key: 'emergency', icon: '🚨', label: 'Emergency Requests', description: 'Live Alerts & Triage' }, // ✅ NEW
     { key: 'doctors', icon: '👨‍⚕️', label: 'Doctors', description: 'Staff management' },
-    { key: 'facilities', icon: '🏗️', label: 'Facilities', description: 'Resources' },
-    { key: 'beds', icon: '🛏️', label: 'Beds', description: 'Availability' },
-    { key: 'emergency', icon: '🚨', label: 'Emergency', description: 'Requests' },
+    { key: 'facilities', icon: '🏗️', label: 'Facilities', description: 'Resources & Status' },
+    { key: 'beds', icon: '🛏️', label: 'Beds', description: 'Capacity Planning' },
   ];
 
   // Render the active module based on selection
@@ -42,13 +39,11 @@ const HospitalDashboard = ({ onLogout }) => {
       case 'facilities':
         return <FacilityManagement />;
       case 'beds':
-        // Pass state and update function down
         return <BedManagement currentStats={bedStats} onUpdate={handleBedUpdate} />;
       case 'emergency':
-        return <EmergencyRequests />;
+        return <EmergencyRequests />; // ✅ THE NEW FEATURE
       default:
-        // Pass state down for display
-        return <HospitalDashboardHome stats={bedStats} />;
+        return <HospitalDashboardHome stats={bedStats} onNavigate={setActiveModule} />;
     }
   };
 
@@ -107,10 +102,10 @@ const HospitalDashboard = ({ onLogout }) => {
 };
 
 /* =========================================
-   1. DASHBOARD HOME (DYNAMIC STATS)
+   1. DASHBOARD HOME (Stats & Summary)
    ========================================= */
-const HospitalDashboardHome = ({ stats }) => {
-  // Calculate availability dynamically based on props
+const HospitalDashboardHome = ({ stats, onNavigate }) => {
+  // Calculate availability dynamically
   const available = stats.totalBeds - stats.occupiedBeds;
   const percentage = stats.totalBeds > 0 ? Math.round((stats.occupiedBeds / stats.totalBeds) * 100) : 0;
 
@@ -127,49 +122,58 @@ const HospitalDashboardHome = ({ stats }) => {
           </div>
         </div>
 
-        {/* Available Beds (Dynamic Color) */}
+        {/* Available Beds */}
         <div className="stat-card">
           <div className="stat-value" style={{ color: available < 10 ? '#ef4444' : '#22c55e' }}>
             {available}
           </div>
           <div className="stat-label">Available Beds</div>
           <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '5px' }}>
-            Ready for patients
+            Live Updates
           </div>
         </div>
 
-        {/* Emergency Requests */}
-        <div className="stat-card">
-          <div className="stat-value" style={{ color: '#ef4444' }}>12</div>
-          <div className="stat-label">Emergency Req</div>
-          <div style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '5px' }}>↑ 3 New requests</div>
+        {/* Quick Actions / Emergency Link */}
+        <div 
+            className="stat-card" 
+            onClick={() => onNavigate('emergency')}
+            style={{ cursor: 'pointer', border: '2px solid #ef4444', background: '#fff5f5' }}
+        >
+          <div className="stat-value" style={{ color: '#ef4444' }}>🚨</div>
+          <div className="stat-label">Emergency Requests</div>
+          <div style={{ fontSize: '0.8rem', color: '#ef4444', marginTop: '5px' }}>
+            Click to View Alerts
+          </div>
         </div>
       </div>
 
-      {/* Emergency Table */}
+      {/* Static Table for recent activity (Visual Only) */}
       <div className="card standard-card">
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-          <h3>🚨 Recent Emergency Requests</h3>
+          <h3>📋 Recent Activity</h3>
           <button style={{ background: 'none', border: 'none', color: '#4f46e5', cursor: 'pointer', fontWeight: 'bold' }}>View All</button>
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ textAlign: 'left', color: '#64748b', borderBottom: '1px solid #e2e8f0' }}>
-              <th style={{ padding: '10px' }}>Patient</th>
-              <th style={{ padding: '10px' }}>Condition</th>
+              <th style={{ padding: '10px' }}>Type</th>
+              <th style={{ padding: '10px' }}>Details</th>
+              <th style={{ padding: '10px' }}>Time</th>
               <th style={{ padding: '10px' }}>Status</th>
-              <th style={{ padding: '10px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
             <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
-              <td style={{ padding: '10px' }}>John Doe</td>
-              <td style={{ padding: '10px' }}>Chest Pain</td>
-              <td style={{ padding: '10px' }}><span style={{ color: '#d97706', background: '#fef3c7', padding: '3px 8px', borderRadius: '10px', fontSize: '0.8rem' }}>Pending</span></td>
-              <td style={{ padding: '10px' }}>
-                <button style={{ marginRight: '5px', border: 'none', background: '#22c55e', color: 'white', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}>✓</button>
-                <button style={{ border: 'none', background: '#ef4444', color: 'white', padding: '5px 10px', borderRadius: '5px', cursor: 'pointer' }}>✕</button>
-              </td>
+              <td style={{ padding: '10px' }}>Check-in</td>
+              <td style={{ padding: '10px' }}>New Patient Admitted (Cardiology)</td>
+              <td style={{ padding: '10px' }}>10:30 AM</td>
+              <td style={{ padding: '10px' }}><span style={{ color: 'green' }}>Completed</span></td>
+            </tr>
+            <tr style={{ borderBottom: '1px solid #f1f5f9' }}>
+              <td style={{ padding: '10px' }}>System</td>
+              <td style={{ padding: '10px' }}>Facility Updated: MRI Scan</td>
+              <td style={{ padding: '10px' }}>09:15 AM</td>
+              <td style={{ padding: '10px' }}><span style={{ color: 'blue' }}>Logged</span></td>
             </tr>
           </tbody>
         </table>
@@ -179,7 +183,7 @@ const HospitalDashboardHome = ({ stats }) => {
 };
 
 /* =========================================
-   2. DOCTOR MANAGEMENT (CRUD)
+   2. DOCTOR MANAGEMENT (Full CRUD)
    ========================================= */
 const DoctorManagement = () => {
   const [doctors, setDoctors] = useState([]);
@@ -188,19 +192,28 @@ const DoctorManagement = () => {
   const [editingId, setEditingId] = useState(null);
 
   const [doctorForm, setDoctorForm] = useState({
-    name: '', specialization: '', contactNumber: '', licenceNumber: ''
+    name: '', 
+    specialization: '', 
+    contactNumber: '', 
+    licenceNumber: ''
   });
 
-  useEffect(() => { fetchDoctors(); }, []);
+  useEffect(() => { 
+      fetchDoctors(); 
+  }, []);
 
   const fetchDoctors = async () => {
     try {
       const response = await api.get('/Doctors');
       setDoctors(response.data);
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+      console.error(error); 
+    }
   };
 
-  const handleInputChange = (e) => setDoctorForm({ ...doctorForm, [e.target.name]: e.target.value });
+  const handleInputChange = (e) => {
+      setDoctorForm({ ...doctorForm, [e.target.name]: e.target.value });
+  };
 
   const handleEdit = (doctor) => {
     setEditingId(doctor.doctorId);
@@ -225,21 +238,32 @@ const DoctorManagement = () => {
 
     try {
       if (editingId) {
+        // Edit existing
         await api.put(`/Doctors/${editingId}`, payload);
       } else {
+        // Create new
         await api.post('/Doctors', payload);
       }
+      // Reset Form
       setDoctorForm({ name: '', specialization: '', contactNumber: '', licenceNumber: '' });
       setEditingId(null);
       setShowForm(false);
       fetchDoctors();
-    } catch (error) { alert("Operation failed"); } 
-    finally { setIsLoading(false); }
+    } catch (error) { 
+        alert("Operation failed. Check inputs."); 
+    } finally { 
+        setIsLoading(false); 
+    }
   };
 
   const handleDelete = async (id) => {
-    if(!window.confirm("Delete doctor?")) return;
-    try { await api.delete(`/Doctors/${id}`); fetchDoctors(); } catch(e) {}
+    if(!window.confirm("Are you sure you want to delete this doctor?")) return;
+    try { 
+        await api.delete(`/Doctors/${id}`); 
+        fetchDoctors(); 
+    } catch(e) {
+        alert("Error deleting doctor.");
+    }
   };
 
   return (
@@ -252,12 +276,25 @@ const DoctorManagement = () => {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={{ background: '#f8fafc', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
+        <form onSubmit={handleSubmit} style={{ background: '#f8fafc', padding: '20px', borderRadius: '10px', marginBottom: '20px', border: '1px solid #e2e8f0' }}>
+            <h4 style={{marginTop:0, marginBottom:'15px'}}>{editingId ? 'Edit Doctor' : 'New Doctor Details'}</h4>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <input name="name" value={doctorForm.name} onChange={handleInputChange} placeholder="Name" className="ai-input" required />
-                <input name="specialization" value={doctorForm.specialization} onChange={handleInputChange} placeholder="Specialization (e.g. Cardiology)" className="ai-input" required />
-                <input name="licenceNumber" value={doctorForm.licenceNumber} onChange={handleInputChange} placeholder="Licence No" className="ai-input" required />
-                <input name="contactNumber" value={doctorForm.contactNumber} onChange={handleInputChange} placeholder="Phone" className="ai-input" required />
+                <div>
+                    <label style={{fontSize:'0.8rem', fontWeight:'bold'}}>Name</label>
+                    <input name="name" value={doctorForm.name} onChange={handleInputChange} placeholder="Dr. Name" className="ai-input" required />
+                </div>
+                <div>
+                    <label style={{fontSize:'0.8rem', fontWeight:'bold'}}>Specialization</label>
+                    <input name="specialization" value={doctorForm.specialization} onChange={handleInputChange} placeholder="e.g. Cardiology" className="ai-input" required />
+                </div>
+                <div>
+                    <label style={{fontSize:'0.8rem', fontWeight:'bold'}}>Licence No</label>
+                    <input name="licenceNumber" value={doctorForm.licenceNumber} onChange={handleInputChange} placeholder="LIC-XXXX" className="ai-input" required />
+                </div>
+                <div>
+                    <label style={{fontSize:'0.8rem', fontWeight:'bold'}}>Contact</label>
+                    <input name="contactNumber" value={doctorForm.contactNumber} onChange={handleInputChange} placeholder="Phone Number" className="ai-input" required />
+                </div>
             </div>
             <button type="submit" className="ai-analyze-btn" style={{ marginTop: '15px', width: '100%' }}>
                 {isLoading ? 'Saving...' : 'Save Doctor'}
@@ -271,7 +308,7 @@ const DoctorManagement = () => {
                 <th style={{ padding: '10px' }}>Name</th>
                 <th style={{ padding: '10px' }}>Specialization</th>
                 <th style={{ padding: '10px' }}>Licence</th>
-                <th style={{ padding: '10px' }}>Action</th>
+                <th style={{ padding: '10px', textAlign: 'center' }}>Action</th>
             </tr>
         </thead>
         <tbody>
@@ -280,12 +317,15 @@ const DoctorManagement = () => {
                     <td style={{ padding: '10px', fontWeight: '500' }}>{d.name}</td>
                     <td style={{ padding: '10px' }}>{d.specialization}</td>
                     <td style={{ padding: '10px' }}>{d.licenceNumber}</td>
-                    <td style={{ padding: '10px' }}>
-                        <button onClick={() => handleEdit(d)} style={{ marginRight: '10px', border:'none', background:'none', cursor:'pointer' }}>✏️</button>
-                        <button onClick={() => handleDelete(d.doctorId)} style={{ border:'none', background:'none', cursor:'pointer', color:'red' }}>🗑️</button>
+                    <td style={{ padding: '10px', textAlign: 'center' }}>
+                        <button onClick={() => handleEdit(d)} style={{ marginRight: '10px', border:'none', background:'#eff6ff', color:'#2563eb', padding:'5px 10px', borderRadius:'4px', cursor:'pointer' }}>✏️</button>
+                        <button onClick={() => handleDelete(d.doctorId)} style={{ border:'none', background:'#fef2f2', color:'#dc2626', padding:'5px 10px', borderRadius:'4px', cursor:'pointer' }}>🗑️</button>
                     </td>
                 </tr>
             ))}
+            {doctors.length === 0 && (
+                <tr><td colSpan="4" style={{textAlign:'center', padding:'20px', color:'#999'}}>No doctors added yet.</td></tr>
+            )}
         </tbody>
       </table>
     </div>
@@ -293,7 +333,7 @@ const DoctorManagement = () => {
 };
 
 /* =========================================
-   3. FACILITY MANAGEMENT (REAL-TIME TOGGLE)
+   3. FACILITY MANAGEMENT (Status Toggle)
    ========================================= */
 const FacilityManagement = () => {
   const [facilities, setFacilities] = useState([]);
@@ -311,6 +351,7 @@ const FacilityManagement = () => {
 
   const toggleAvailability = async (facility) => {
     const originalState = [...facilities];
+    // Optimistic Update: Update UI instantly
     const updatedFacilities = facilities.map(f => 
       f.facilityId === facility.facilityId ? { ...f, availability: !f.availability } : f
     );
@@ -322,8 +363,8 @@ const FacilityManagement = () => {
         availability: !facility.availability
       });
     } catch (error) {
-      setFacilities(originalState);
-      alert("Failed to update status.");
+      setFacilities(originalState); // Revert on failure
+      alert("Failed to update status. Server error.");
     }
   };
 
@@ -335,25 +376,44 @@ const FacilityManagement = () => {
       await api.post('/Facilities', { facilityName: newFacilityName, availability: true });
       setNewFacilityName('');
       fetchFacilities();
-    } catch (error) { console.error(error); } 
-    finally { setIsLoading(false); }
+    } catch (error) { 
+        alert("Error adding facility"); 
+    } finally { 
+        setIsLoading(false); 
+    }
   };
 
   const handleDelete = async (id) => {
-    if(!window.confirm("Delete facility?")) return;
-    try { await api.delete(`/Facilities/${id}`); fetchFacilities(); } catch(e){}
+    if(!window.confirm("Remove this facility?")) return;
+    try { 
+        await api.delete(`/Facilities/${id}`); 
+        fetchFacilities(); 
+    } catch(e){
+        alert("Could not delete.");
+    }
   };
 
   return (
     <div className="card standard-card">
       <div style={{ marginBottom: '20px' }}>
         <h3>🏗️ Facility Status Control</h3>
-        <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Toggle switch to <b>OFF</b> if a facility is full or unavailable.</p>
+        <p style={{ color: '#64748b', fontSize: '0.9rem' }}>
+            Control which departments are "Active" for the AI matching algorithm.
+            If a department is Full or Closed, toggle the switch OFF.
+        </p>
       </div>
 
       <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', padding:'15px', background:'#f8fafc', borderRadius:'10px' }}>
-        <input value={newFacilityName} onChange={(e) => setNewFacilityName(e.target.value)} placeholder="Add generic facility..." className="ai-input" style={{ flex: 1 }} />
-        <button onClick={handleAddFacility} disabled={isLoading} className="ai-analyze-btn">{isLoading ? '...' : '+ Add'}</button>
+        <input 
+            value={newFacilityName} 
+            onChange={(e) => setNewFacilityName(e.target.value)} 
+            placeholder="Add generic facility (e.g. ICU, Pharmacy)..." 
+            className="ai-input" 
+            style={{ flex: 1 }} 
+        />
+        <button onClick={handleAddFacility} disabled={isLoading} className="ai-analyze-btn">
+            {isLoading ? '...' : '+ Add Facility'}
+        </button>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '15px' }}>
@@ -362,22 +422,25 @@ const FacilityManagement = () => {
               padding: '15px', borderRadius: '10px', border: '1px solid',
               borderColor: f.availability ? '#bbf7d0' : '#fecaca',
               background: f.availability ? '#f0fdf4' : '#fef2f2',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              transition: 'all 0.3s ease'
             }}>
             <div>
-              <div style={{ fontWeight: '600' }}>{f.facilityName}</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: f.availability ? '#16a34a' : '#dc2626' }}>
+              <div style={{ fontWeight: '600', fontSize:'1.1rem' }}>{f.facilityName}</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 'bold', color: f.availability ? '#16a34a' : '#dc2626', marginTop:'5px' }}>
                 {f.availability ? '● ACTIVE' : '○ CLOSED'}
               </div>
             </div>
+            
             <div style={{ display:'flex', gap:'10px', alignItems:'center'}}>
-                <label style={{ position: 'relative', display: 'inline-block', width: '40px', height: '22px' }}>
+                {/* Toggle Switch */}
+                <label style={{ position: 'relative', display: 'inline-block', width: '44px', height: '24px' }}>
                     <input type="checkbox" checked={f.availability} onChange={() => toggleAvailability(f)} style={{ opacity: 0, width: 0, height: 0 }} />
                     <span style={{ position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: f.availability ? '#22c55e' : '#cbd5e1', transition: '.4s', borderRadius: '34px' }}>
-                        <span style={{ position: 'absolute', content: "", height: '16px', width: '16px', left: '3px', bottom: '3px', backgroundColor: 'white', transition: '.4s', borderRadius: '50%', transform: f.availability ? 'translateX(18px)' : 'translateX(0)' }}></span>
+                        <span style={{ position: 'absolute', content: "", height: '18px', width: '18px', left: '3px', bottom: '3px', backgroundColor: 'white', transition: '.4s', borderRadius: '50%', transform: f.availability ? 'translateX(20px)' : 'translateX(0)' }}></span>
                     </span>
                 </label>
-                <button onClick={() => handleDelete(f.facilityId)} style={{ border:'none', background:'none', cursor:'pointer', fontSize:'1.1rem', opacity:0.5 }}>×</button>
+                <button onClick={() => handleDelete(f.facilityId)} style={{ border:'none', background:'none', cursor:'pointer', fontSize:'1.2rem', opacity:0.5, color:'#dc2626' }}>×</button>
             </div>
           </div>
         ))}
@@ -387,7 +450,7 @@ const FacilityManagement = () => {
 };
 
 /* =========================================
-   4. BED MANAGEMENT (UPDATE PARENT STATE)
+   4. BED MANAGEMENT (Capacity Logic)
    ========================================= */
 const BedManagement = ({ currentStats, onUpdate }) => {
   const [total, setTotal] = useState(currentStats.totalBeds);
@@ -406,7 +469,7 @@ const BedManagement = ({ currentStats, onUpdate }) => {
     <div className="card standard-card">
       <h3>🛏️ Bed Capacity Management</h3>
       <p style={{ color: '#64748b', fontSize: '0.9rem', marginBottom: '20px' }}>
-        Update total capacity and current occupancy. This data is used by AI to route patients.
+        Update total capacity and current occupancy. This data is displayed to emergency responders.
       </p>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', maxWidth: '600px' }}>
@@ -429,19 +492,113 @@ const BedManagement = ({ currentStats, onUpdate }) => {
         </div>
       </div>
 
-      <button onClick={handleSave} className="ai-analyze-btn" style={{ marginTop: '25px', padding: '12px 30px' }}>Update Status</button>
+      <button onClick={handleSave} className="ai-analyze-btn" style={{ marginTop: '25px', padding: '12px 30px' }}>Update Live Status</button>
     </div>
   );
 };
 
 /* =========================================
-   5. EMERGENCY REQUESTS (PLACEHOLDER)
+   5. NEW MODULE: EMERGENCY REQUESTS (THE FORUM)
    ========================================= */
-const EmergencyRequests = () => (
-  <div className="card standard-card">
-    <h3>🚨 Emergency Requests</h3>
-    <p style={{ color: '#64748b' }}>Live incoming requests will appear here.</p>
-  </div>
-);
+const EmergencyRequests = () => {
+    const [requests, setRequests] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // --- POLLING: Fetch data every 5 seconds ---
+    useEffect(() => {
+        // IMPORTANT: In a real app, retrieve the hospital ID from Login Data
+        // localStorage.getItem('hospitalId');
+        // We are using '2' (Sri Vignesh) as the hardcoded example
+        const HOSPITAL_ID = 2; 
+
+        const fetchRequests = async () => {
+            try {
+                // Ensure your C# RequestController endpoint matches this path
+                const res = await api.get(`/Requests/hospital/${HOSPITAL_ID}`);
+                setRequests(res.data);
+                setLoading(false);
+            } catch (error) {
+                console.error("Polling Error", error);
+            }
+        };
+
+        // Fetch immediately, then interval
+        fetchRequests(); 
+        const interval = setInterval(fetchRequests, 5000); 
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // Handle Accept/Decline
+    const handleAction = async (requestId, status) => {
+        try {
+            await api.post(`/Requests/update-status/${requestId}`, JSON.stringify(status), {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            // Optimistic Update: Remove from list immediately
+            setRequests(prev => prev.filter(r => r.requestId !== requestId));
+            alert(`Request ${status}`);
+        } catch (error) {
+            alert("Error updating request status.");
+        }
+    };
+
+    return (
+        <div className="card standard-card">
+            <h3>🚨 Live Emergency Requests</h3>
+            <p style={{marginBottom:'20px', color:'#666'}}>
+                Incoming admission requests from patients in the Emergency Map. 
+                Approve to notify the user immediately.
+            </p>
+
+            {loading ? <p>Scanning network...</p> : requests.length === 0 ? (
+                <div style={{textAlign:'center', padding:'40px', background:'#f8f9fa', borderRadius:'8px', border:'1px dashed #cbd5e1'}}>
+                    <h4>✅ No Pending Emergencies</h4>
+                    <p style={{color:'#666', fontSize:'0.9rem'}}>System is online and monitoring.</p>
+                </div>
+            ) : (
+                <div style={{display:'grid', gap:'15px'}}>
+                    {requests.map(req => (
+                        <div key={req.requestId} style={{
+                            borderLeft:'5px solid #dc3545', background:'#fff5f5', padding:'20px', 
+                            borderRadius:'8px', display:'flex', justifyContent:'space-between', alignItems:'center',
+                            boxShadow:'0 2px 8px rgba(0,0,0,0.05)', transition:'transform 0.2s'
+                        }}>
+                            <div>
+                                <h4 style={{margin:0, color:'#c0392b', fontSize:'1.1rem'}}>🚨 INCOMING: {req.patientName || "User"}</h4>
+                                <p style={{margin:'8px 0', fontWeight:'bold', fontSize:'1rem'}}>Condition: {req.symptomDescription}</p>
+                                <div style={{fontSize:'0.9rem', color:'#555', marginBottom:'5px'}}>📞 Contact: {req.contactNumber}</div>
+                                <small style={{color:'#888'}}>Requested at: {new Date(req.requestTime).toLocaleTimeString()}</small>
+                            </div>
+                            
+                            <div style={{display:'flex', gap:'10px', flexDirection:'column'}}>
+                                <button 
+                                    onClick={() => handleAction(req.requestId, 'Accepted')}
+                                    style={{
+                                        background:'#27ae60', color:'white', border:'none', 
+                                        padding:'10px 25px', borderRadius:'5px', cursor:'pointer', fontWeight:'bold',
+                                        boxShadow:'0 2px 5px rgba(39, 174, 96, 0.3)'
+                                    }}
+                                >
+                                    ✅ ACCEPT ADMIT
+                                </button>
+                                <button 
+                                    onClick={() => handleAction(req.requestId, 'Declined')}
+                                    style={{
+                                        background:'#e74c3c', color:'white', border:'none', 
+                                        padding:'10px 25px', borderRadius:'5px', cursor:'pointer', fontWeight:'bold',
+                                        boxShadow:'0 2px 5px rgba(231, 76, 60, 0.3)'
+                                    }}
+                                >
+                                    ❌ DECLINE (FULL)
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default HospitalDashboard;

@@ -502,8 +502,14 @@ const UserDashboard = ({ onLogout, initialMode = "dashboard", emergencyContext =
   }
 
   // Uses local State "currentEmergencyData" which comes from Voice OR Dashboard Analyze
+ // --- LOGIC 2: EMERGENCY SPECIALTY MAP ---
   if (activeModule === 'emergency') {
-    return <EmergencyMap onBack={onLogout} symptomData={currentEmergencyData} />;
+    const data = emergencyContext || { specialty: "Emergency", isCritical: true };
+    return <EmergencyMap 
+             onBack={() => setActiveModule('dashboard')} // Goes to User Dashboard
+             onGoHome={onLogout} // ✅ GOES TO HOME PAGE (Using the logout function)
+             symptomData={data} 
+           />;
   }
 
   const renderModule = () => {
