@@ -5,7 +5,7 @@ import EmergencyMap from "./EmergencyMap"; // ✅ IMPORT NEW EMERGENCY MAP
 import '../../styles/Dashboard.css';
 import '../../styles/Chatbot.css'; 
 
-// --- 1. CHATBOT COMPONENT (FULLY RESTORED) ---
+// --- 1. CHATBOT COMPONENT (Fully Restored) ---
 const MedicalChatbot = () => {
     const GROQ_API_KEY = process.env.REACT_APP_GROQ_API_KEY; 
     const [messages, setMessages] = useState([
@@ -76,9 +76,20 @@ const MedicalChatbot = () => {
             if (!response.ok) throw new Error(data.error?.message || "API Error");
 
             const aiText = data.choices[0].message.content;
-            const formattedText = formatResponse(aiText);
+            
+            // Format HTML for chat
+            let cleanText = aiText.replace(/\n/g, "<br>");
+            cleanText = cleanText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"); 
+            cleanText = cleanText.replace(/Condition:/gi, "<strong>🏥 Condition:</strong>");
+            cleanText = cleanText.replace(/Home Remed/gi, "<br><strong>💊 Home Remedy</strong>");
+            
             const isCritical = aiText.includes("CRITICAL") || aiText.includes("WARNING");
-            addBotMessage(formattedText, isCritical);
+            
+            if (isCritical) {
+                cleanText = `<div class="warning-box">${cleanText}</div>`;
+            }
+
+            setMessages(prev => [...prev, { id: Date.now() + 1, text: cleanText, sender: 'bot', isHtml: true }]);
 
         } catch (error) {
             console.error(error);
@@ -88,30 +99,13 @@ const MedicalChatbot = () => {
         }
     };
 
-    const addBotMessage = (text, isCritical = false) => {
+    const addBotMessage = (text) => {
         setMessages(prev => [...prev, { 
             id: Date.now() + 1, 
             text: text, 
             sender: 'bot', 
-            isHtml: true,
-            isCritical: isCritical
+            isHtml: true
         }]);
-    };
-
-    const formatResponse = (text) => {
-        let cleanText = text.replace(/\n/g, "<br>");
-        cleanText = cleanText.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"); 
-        cleanText = cleanText.replace(/Condition:/gi, "<strong>🏥 Condition:</strong>");
-        cleanText = cleanText.replace(/Home Remed/gi, "<br><strong>💊 Home Remedy</strong>");
-        cleanText = cleanText.replace(/Do:/g, "<br><strong>✅ Do:</strong>");
-        cleanText = cleanText.replace(/Dos:/g, "<br><strong>✅ Do:</strong>");
-        cleanText = cleanText.replace(/Avoid:/g, "<br><strong>❌ Avoid:</strong>");
-        cleanText = cleanText.replace(/Donts:/g, "<br><strong>❌ Avoid:</strong>");
-        
-        if (text.includes("CRITICAL") || text.includes("WARNING")) {
-            return `<div class="warning-box">${cleanText}</div>`;
-        }
-        return cleanText;
     };
 
     return (
@@ -126,7 +120,7 @@ const MedicalChatbot = () => {
                 </div>
                 <div className="chat-box" ref={chatBoxRef}>
                     {messages.map((msg) => (
-                        <div key={msg.id} className={`message ${msg.sender}-message ${msg.isCritical ? 'critical-msg' : ''}`}>
+                        <div key={msg.id} className={`message ${msg.sender}-message`}>
                             {msg.isHtml ? <div dangerouslySetInnerHTML={{ __html: msg.text }} /> : msg.text}
                         </div>
                     ))}
@@ -156,7 +150,7 @@ const MedicalChatbot = () => {
     );
 };
 
-// --- 2. DASHBOARD HOME (✅ MODIFIED: CONNECTS TO PYTHON AI) ---
+// --- 2. DASHBOARD HOME (Full + AI Integrated) ---
 const DashboardHome = ({ onNavigate, onTriggerEmergency }) => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -167,7 +161,7 @@ const DashboardHome = ({ onNavigate, onTriggerEmergency }) => {
     { label: 'ICU Availability', value: 'High', color: '#e67e22' }
   ];
 
-  // 🔴 NEW LOGIC: Call Python API when "Analyze" is clicked
+  // LOGIC TO CALL PYTHON API
   const handleAnalyze = async () => {
     if (!input.trim()) return alert("Please enter your symptoms.");
     setLoading(true);
@@ -176,6 +170,7 @@ const DashboardHome = ({ onNavigate, onTriggerEmergency }) => {
         const formData = new FormData();
         formData.append("text", input); 
 
+        // Python AI Call
         const response = await fetch("http://127.0.0.1:8000/analyze-text/", {
             method: "POST",
             body: formData
@@ -184,7 +179,7 @@ const DashboardHome = ({ onNavigate, onTriggerEmergency }) => {
         if (!response.ok) throw new Error("AI Offline");
         const data = await response.json();
         
-        // Pass the analysis result (which contains the Department) back to the parent
+        // Pass data to Parent (UserDashboard) to switch view
         onTriggerEmergency(data.analysis);
 
     } catch (error) {
@@ -202,12 +197,11 @@ const DashboardHome = ({ onNavigate, onTriggerEmergency }) => {
           <h2><span className="wave">👋</span> How can Suvera help you ?</h2>
           <p className="hero-subtitle">AI-powered symptom analysis & specialist matching.</p>
           
-          {/* 🔴 NEW INPUT & BUTTON CONNECTED TO LOGIC */}
           <div className="ai-input-wrapper">
             <span className="ai-icon">🧠</span>
             <input 
                 type="text" 
-                placeholder="Describe symptoms..." 
+                placeholder="Describe symptoms here..." 
                 className="ai-input"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
@@ -276,9 +270,7 @@ const DashboardHome = ({ onNavigate, onTriggerEmergency }) => {
   );
 };
 
-const EmergencyAssistance = () => <div className="content-card"><h3>🚨 Emergency Assistance Active</h3><p>Connecting to nearest ambulance...</p></div>;
-
-// --- 3. USER PROFILE (FULLY RESTORED) ---
+// --- 3. USER PROFILE (Full Logic Included) ---
 const UserProfile = () => {
     const [profile, setProfile] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -303,7 +295,7 @@ const UserProfile = () => {
             const myProfile = response.data.find(p => p.phoneNumber === phone);
             
             setProfile(myProfile);
-            setEditData(myProfile); // Initialize edit form with current data
+            setEditData(myProfile); 
         } catch (error) {
             console.error("Error fetching profile:", error);
         } finally {
@@ -323,8 +315,6 @@ const UserProfile = () => {
     const handleSave = async () => {
         try {
             await api.put(`/Patients/${profile.patientId}`, editData);
-            
-            // Update UI
             setProfile(editData);
             setIsEditing(false);
             alert("Profile updated successfully!");
@@ -334,13 +324,8 @@ const UserProfile = () => {
         }
     };
 
-    const handleCancel = () => {
-        setEditData(profile); // Reset changes
-        setIsEditing(false);
-    };
-
     if (loading) return <div className="content-card">Loading Profile...</div>;
-    if (!profile) return <div className="content-card"><h3>Profile Not Found</h3><p>Could not load details.</p></div>;
+    if (!profile) return <div className="content-card"><h3>Guest User</h3><p>Login to see details.</p></div>;
 
     return (
         <div className="content-card">
@@ -352,14 +337,7 @@ const UserProfile = () => {
                     </div>
                     <div>
                         {isEditing ? (
-                             <input 
-                             type="text" 
-                             name="name"
-                             value={editData.name}
-                             onChange={handleInputChange}
-                             className="ai-input"
-                             style={{ fontSize: '1.5rem', fontWeight: 'bold', width: '200px', marginBottom: '5px' }}
-                         />
+                             <input type="text" name="name" value={editData.name} onChange={handleInputChange} className="ai-input" style={{ fontSize: '1.5rem', fontWeight: 'bold', width: '200px', marginBottom: '5px' }} />
                         ) : (
                             <h2 style={{ margin: 0 }}>{profile.name}</h2>
                         )}
@@ -367,12 +345,11 @@ const UserProfile = () => {
                     </div>
                 </div>
 
-                {/* Edit/Save Buttons */}
                 <div>
                     {isEditing ? (
                         <div style={{ display: 'flex', gap: '10px' }}>
                             <button onClick={handleSave} className="ai-analyze-btn" style={{ background: '#22c55e', padding: '8px 16px' }}>Save</button>
-                            <button onClick={handleCancel} className="ai-analyze-btn" style={{ background: '#ef4444', padding: '8px 16px' }}>Cancel</button>
+                            <button onClick={() => setIsEditing(false)} className="ai-analyze-btn" style={{ background: '#ef4444', padding: '8px 16px' }}>Cancel</button>
                         </div>
                     ) : (
                         <button onClick={() => setIsEditing(true)} className="ai-analyze-btn">
@@ -386,88 +363,48 @@ const UserProfile = () => {
             <div className="card standard-card">
                 <h3>📋 Medical Details</h3>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '15px' }}>
-                    
                     {/* AGE */}
                     <div>
                         <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>Age</label>
-                        {isEditing ? (
-                            <input 
-                                type="number" 
-                                name="age"
-                                value={editData.age}
-                                onChange={handleInputChange}
-                                className="ai-input"
-                                style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
-                            />
-                        ) : (
-                            <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.age} Years</div>
-                        )}
+                        {isEditing ? <input type="number" name="age" value={editData.age} onChange={handleInputChange} className="ai-input" style={{width:'100%'}} /> : <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.age} Years</div>}
                     </div>
-
                     {/* GENDER */}
                     <div>
                         <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>Gender</label>
                         {isEditing ? (
-                             <select 
-                                name="gender"
-                                value={editData.gender}
-                                onChange={handleInputChange}
-                                className="ai-input"
-                                style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
-                             >
-                                <option value="Male">Male</option>
-                                <option value="Female">Female</option>
-                                <option value="Other">Other</option>
+                             <select name="gender" value={editData.gender} onChange={handleInputChange} className="ai-input" style={{width:'100%'}}>
+                                <option value="Male">Male</option><option value="Female">Female</option>
                              </select>
                         ) : (
                             <div style={{ fontSize: '1.1rem', fontWeight: '500' }}>{profile.gender}</div>
                         )}
                     </div>
-
                     {/* BLOOD GROUP */}
                     <div>
                         <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>Blood Group</label>
                         {isEditing ? (
-                            <select 
-                                name="bloodGroup"
-                                value={editData.bloodGroup}
-                                onChange={handleInputChange}
-                                className="ai-input"
-                                style={{ width: '100%', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '6px' }}
-                            >
-                                <option value="A+">A+</option>
-                                <option value="A-">A-</option>
-                                <option value="B+">B+</option>
-                                <option value="B-">B-</option>
-                                <option value="AB+">AB+</option>
-                                <option value="AB-">AB-</option>
-                                <option value="O+">O+</option>
-                                <option value="O-">O-</option>
+                            <select name="bloodGroup" value={editData.bloodGroup} onChange={handleInputChange} className="ai-input" style={{width:'100%'}}>
+                                <option value="A+">A+</option><option value="O+">O+</option><option value="B+">B+</option>
                             </select>
                         ) : (
                             <div style={{ fontSize: '1.1rem', fontWeight: '500', color: '#ef4444' }}>{profile.bloodGroup}</div>
                         )}
                     </div>
-
-                    {/* CONTACT (Read Only) */}
+                    {/* CONTACT */}
                     <div>
                         <label style={{ fontSize: '0.85rem', color: '#64748b', display: 'block', marginBottom: '5px' }}>Contact</label>
-                        <div style={{ fontSize: '1.1rem', fontWeight: '500', color: '#64748b' }}>
-                            {profile.phoneNumber} 
-                            {isEditing && <span style={{fontSize: '0.7rem', color: '#ef4444', marginLeft: '5px'}}>(Cannot change)</span>}
-                        </div>
+                        <div style={{ fontSize: '1.1rem', fontWeight: '500', color: '#64748b' }}>{profile.phoneNumber}</div>
                     </div>
-
                 </div>
             </div>
         </div>
     );
 };
 
-// --- 4. MAIN DASHBOARD CONTAINER (✅ MODIFIED TO HANDLE AI RESULTS) ---
+// --- 4. PARENT DASHBOARD CONTAINER (Connected) ---
 const UserDashboard = ({ onLogout, initialMode = "dashboard", emergencyContext = null }) => {
   const [activeModule, setActiveModule] = useState(initialMode);
-  // Default Data or passed via Props
+  // Current Emergency Context (Default or passed from Props)
   const [currentEmergencyData, setCurrentEmergencyData] = useState(
       emergencyContext || { specialty: "Emergency", isCritical: true }
   );
@@ -476,11 +413,10 @@ const UserDashboard = ({ onLogout, initialMode = "dashboard", emergencyContext =
 
   useEffect(() => {
     if (initialMode) setActiveModule(initialMode);
-    // If context passed from Voice (App.js), update state
     if (emergencyContext) setCurrentEmergencyData(emergencyContext);
   }, [initialMode, emergencyContext]);
 
-  // 🔴 LOGIC TO SWITCH VIEW WHEN DASHBOARD "ANALYZE" IS USED
+  // ✅ HANDLER: When Dashboard Input calls AI, switch to Map
   const handleAiTransition = (analysisResult) => {
       const specialty = analysisResult.disease_info.top_department;
       const isCritical = analysisResult.final_status === "Critical";
@@ -497,26 +433,25 @@ const UserDashboard = ({ onLogout, initialMode = "dashboard", emergencyContext =
     { key: 'profile', icon: '👤', label: 'Profile', description: 'Account' },
   ];
 
+  // MODULE 1: General Map
   if (activeModule === 'nearby') {
     return <NearbyHospitals onBack={() => setActiveModule('dashboard')} searchSpecialty="General" />;
   }
 
-  // Uses local State "currentEmergencyData" which comes from Voice OR Dashboard Analyze
- // --- LOGIC 2: EMERGENCY SPECIALTY MAP ---
+  // MODULE 2: Emergency Map (Smart Routing)
   if (activeModule === 'emergency') {
-    const data = emergencyContext || { specialty: "Emergency", isCritical: true };
     return <EmergencyMap 
-             onBack={() => setActiveModule('dashboard')} // Goes to User Dashboard
-             onGoHome={onLogout} // ✅ GOES TO HOME PAGE (Using the logout function)
-             symptomData={data} 
+             onBack={() => setActiveModule('dashboard')} 
+             onGoHome={onLogout} 
+             symptomData={currentEmergencyData} 
            />;
   }
 
+  // MODULE 3: Normal Dashboard Flow
   const renderModule = () => {
     switch(activeModule) {
       case 'chatbot': return <MedicalChatbot />;
       case 'profile': return <UserProfile />;
-      // Pass the transition handler down
       default: return <DashboardHome onNavigate={setActiveModule} onTriggerEmergency={handleAiTransition} />;
     }
   };

@@ -5,18 +5,19 @@ import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import 'leaflet-routing-machine';
 import api from '../../api'; // ✅ Ensure API is imported
 
-// --- Fix Leaflet Icons ---
-import icon from 'leaflet/dist/images/marker-icon.png';
-import iconShadow from 'leaflet/dist/images/marker-shadow.png';
-
-let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41],
-    popupAnchor: [1, -34],
+/* 
+   -------------------------------------------------
+   🚨 FIX FOR "appendChild" ERROR STARTS HERE 🚨
+   This block fixes the Webpack issue with Leaflet icons.
+   -------------------------------------------------
+*/
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
+    iconUrl: require('leaflet/dist/images/marker-icon.png'),
+    shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
 });
-L.Marker.prototype.options.icon = DefaultIcon;
+/* ------------------------------------------------- */
 
 // --- Custom Icons ---
 const userIcon = L.divIcon({
@@ -44,7 +45,7 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
     
     // --- Request / Forum State ---
     const [requestStatus, setRequestStatus] = useState(null); // 'Pending', 'Accepted', 'Declined'
-    const [activeRequestId, setActiveRequestId] = useState(null); // Which hospital requested
+    const [activeRequestId, setActiveRequestId] = useState(null); 
     
     const mapRef = useRef(null);
     const routingControlRef = useRef(null); 
@@ -54,7 +55,12 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
     // 1. Initialize Map
     useEffect(() => {
         if (!mapRef.current) return;
-        if (map) map.remove();
+        
+        // Proper Cleanup to prevent multiple instances
+        if (map) {
+            map.remove();
+            setMap(null);
+        }
 
         const mapInstance = L.map(mapRef.current, { zoomControl: false }).setView([13.0827, 80.2707], 13);
         
@@ -65,7 +71,13 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
         L.control.zoom({ position: 'bottomright' }).addTo(mapInstance);
         setMap(mapInstance);
 
-        return () => { if (mapInstance) mapInstance.remove(); };
+        // Cleanup on unmount
+        return () => { 
+            if (mapInstance) {
+                mapInstance.remove(); 
+            }
+        };
+        // eslint-disable-next-line
     }, []);
 
     // 2. Fetch Logic
@@ -78,17 +90,20 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                 const lng = pos.coords.longitude;
                 setUserLoc([lat, lng]);
 
-                L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup("<b>You are Here</b>").openPopup();
-                map.setView([lat, lng], 14);
-
-                fetchBackendHospitals(lat, lng);
+                // Ensure map exists before adding marker
+                if(map) {
+                    L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup("<b>You are Here</b>").openPopup();
+                    map.setView([lat, lng], 14);
+                    fetchBackendHospitals(lat, lng, map);
+                }
             },
             () => setStatusMsg("Location Access Denied."),
             { enableHighAccuracy: true }
         );
+        // eslint-disable-next-line
     }, [map]);
 
-    const fetchBackendHospitals = async (lat, lng) => {
+    const fetchBackendHospitals = async (lat, lng, currentMap) => {
         try {
             const response = await fetch(`https://localhost:7189/api/hospitals/search?specialty=${specialty}`);
             if(!response.ok) throw new Error("Failed");
@@ -97,15 +112,15 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
             setHospitals(data);
 
             if (data.length > 0) {
-                setStatusMsg(`${data.length} FOUND`);
+                setStatusMsg(`${data.length} found`);
                 data.forEach(h => {
                     const hLat = parseFloat(h.latitude);
                     const hLng = parseFloat(h.longitude);
-                    if(hLat && hLng) {
-                        const marker = L.marker([hLat, hLng], { icon: hospitalIcon }).addTo(map);
+                    if(hLat && hLng && currentMap) {
+                        const marker = L.marker([hLat, hLng], { icon: hospitalIcon }).addTo(currentMap);
                         marker.on('click', () => {
                             setSelectedId(h.hospitalId); 
-                            drawRoute([lat, lng], [hLat, hLng], map);
+                            drawRoute([lat, lng], [hLat, hLng], currentMap);
                         });
                     }
                 });
@@ -113,7 +128,7 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                 // Select first by default
                 const nearest = data[0];
                 setSelectedId(nearest.hospitalId);
-                drawRoute([lat, lng], [parseFloat(nearest.latitude), parseFloat(nearest.longitude)], map);
+                drawRoute([lat, lng], [parseFloat(nearest.latitude), parseFloat(nearest.longitude)], currentMap);
             } else {
                 setStatusMsg(`No results for ${specialty}.`);
             }
@@ -124,6 +139,8 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
     };
 
     const drawRoute = (start, end, mapInstance) => {
+        if (!mapInstance) return;
+
         if (routingControlRef.current) {
             try { mapInstance.removeControl(routingControlRef.current); } catch(e){}
         }
@@ -148,32 +165,30 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
         routingControlRef.current = control;
     };
 
-    // --- 🚨 NEW FUNCTION: SEND ADMISSION REQUEST ---
+    // --- 🚨 REQUEST ADMISSION FUNCTION ---
     const sendRequest = async (hospital) => {
         if (!window.confirm(`Request Immediate Admission at ${hospital.name}?`)) return;
 
         try {
             const payload = {
                 HospitalId: hospital.hospitalId,
-                PatientName: "Emergency User", // In future, use real user name
+                PatientName: "Emergency User", 
                 ContactNumber: "9876543210", 
                 SymptomDescription: `${specialty} Emergency`
             };
 
             const res = await api.post('/Requests/create', payload);
-            setActiveRequestId(hospital.hospitalId); // Track which hospital is active
+            setActiveRequestId(hospital.hospitalId);
             setRequestStatus("Pending");
             
-            // Start Polling for Response
-            const reqId = res.data.id;
-            startStatusPolling(reqId);
+            // Poll for response
+            startStatusPolling(res.data.id);
 
         } catch (e) {
             alert("Failed to send alert. Try calling directly.");
         }
     };
 
-    // --- 🔄 POLLING FUNCTION ---
     const startStatusPolling = (reqId) => {
         const interval = setInterval(async () => {
             try {
@@ -206,14 +221,18 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                 height: '60px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', zIndex: 10, flexShrink: 0 
             }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'15px' }}>
+                    
+                    {/* ✅ HOME & DASHBOARD BUTTONS */}
                     <button onClick={onGoHome} style={{ background: 'white', color: '#dc2626', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor:'pointer', fontWeight:'bold', fontSize:'0.9rem' }}>
                         🏠 Home
                     </button>
                     <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor:'pointer', fontWeight:'bold', fontSize:'0.9rem' }}>
                         ← Dashboard
                     </button>
-                    <div><h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight:'600' }}>EMERGENCY: {specialty}</h2></div>
+
+                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight:'600' }}>EMERGENCY: {specialty}</h2>
                 </div>
+                
                 {routeInfo && (
                     <div style={{ background: 'white', color: '#dc2626', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem' }}>
                         ⏱ {routeInfo}
@@ -237,7 +256,6 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                     <div style={{ padding: '10px' }}>
                         {hospitals.map((h, i) => {
                             const isSelected = selectedId === h.hospitalId;
-                            // Check if this specific hospital is being requested
                             const isRequestActive = activeRequestId === h.hospitalId;
 
                             return (
@@ -264,7 +282,7 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                                         📞 {h.phoneNumber}
                                     </div>
 
-                                    {/* ✅ THE REQUEST BUTTON */}
+                                    {/* ✅ THE REQUEST ADMIT BUTTON */}
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); sendRequest(h); }}
                                         disabled={isRequestActive && requestStatus !== null}
