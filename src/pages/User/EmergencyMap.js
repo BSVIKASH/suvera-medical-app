@@ -3,35 +3,39 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-routing-machine/dist/leaflet-routing-machine.css';
 import 'leaflet-routing-machine';
-import api from '../../api'; // ✅ Ensure API is imported
+import api from '../../api';
 
-/* 
-   -------------------------------------------------
-   🚨 FIX FOR "appendChild" ERROR STARTS HERE 🚨
-   This block fixes the Webpack issue with Leaflet icons.
-   -------------------------------------------------
-*/
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-    iconUrl: require('leaflet/dist/images/marker-icon.png'),
-    shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
+// --- Fix Leaflet Icons ---
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
 });
-/* ------------------------------------------------- */
+L.Marker.prototype.options.icon = DefaultIcon;
 
-// --- Custom Icons ---
+// --- 🔥 FEATURE 1: ANIMATED RADAR USER ICON ---
 const userIcon = L.divIcon({
     className: 'user-marker',
-    html: '<div style="background-color:#2563eb; width:16px; height:16px; border-radius:50%; border:3px solid white; box-shadow:0 0 8px rgba(0,0,0,0.4);"></div>',
-    iconSize: [16, 16],
-    iconAnchor: [8, 8]
+    html: `
+        <div style="position:relative; width:20px; height:20px;">
+            <div style="position:absolute; background-color:#2563eb; width:100%; height:100%; border-radius:50%; border:2px solid white; z-index:2;"></div>
+            <div class="radar-pulse"></div>
+        </div>
+    `,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10]
 });
 
 const hospitalIcon = L.divIcon({
     className: 'hospital-marker',
-    html: '<div style="font-size:28px; filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.3));">🏥</div>',
-    iconSize: [28, 28],
-    iconAnchor: [14, 14]
+    html: '<div style="font-size:32px; filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.3)); transition: transform 0.2s;">🏥</div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16]
 });
 
 const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
@@ -41,10 +45,10 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
     const [selectedId, setSelectedId] = useState(null);
     const [userLoc, setUserLoc] = useState(null);
     const [routeInfo, setRouteInfo] = useState(null);
-    const [statusMsg, setStatusMsg] = useState('Locating...');
+    const [statusMsg, setStatusMsg] = useState('Acquiring Satellites...');
     
     // --- Request / Forum State ---
-    const [requestStatus, setRequestStatus] = useState(null); // 'Pending', 'Accepted', 'Declined'
+    const [requestStatus, setRequestStatus] = useState(null); 
     const [activeRequestId, setActiveRequestId] = useState(null); 
     
     const mapRef = useRef(null);
@@ -52,18 +56,14 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
 
     const specialty = symptomData?.specialty || "Emergency";
 
-    // 1. Initialize Map
+    // 1. Initialize Map (WHITE BACKGROUND FIX INCLUDED)
     useEffect(() => {
         if (!mapRef.current) return;
-        
-        // Proper Cleanup to prevent multiple instances
-        if (map) {
-            map.remove();
-            setMap(null);
-        }
+        if (map) map.remove();
 
-        const mapInstance = L.map(mapRef.current, { zoomControl: false }).setView([13.0827, 80.2707], 13);
+        const mapInstance = L.map(mapRef.current, { zoomControl: false }).setView([20.59, 78.96], 5);
         
+        // ✅ USING STANDARD LIGHT MAP (Clean Visibility)
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: 'OpenStreetMap'
         }).addTo(mapInstance);
@@ -71,13 +71,7 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
         L.control.zoom({ position: 'bottomright' }).addTo(mapInstance);
         setMap(mapInstance);
 
-        // Cleanup on unmount
-        return () => { 
-            if (mapInstance) {
-                mapInstance.remove(); 
-            }
-        };
-        // eslint-disable-next-line
+        return () => { if (mapInstance) mapInstance.remove(); };
     }, []);
 
     // 2. Fetch Logic
@@ -90,17 +84,15 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                 const lng = pos.coords.longitude;
                 setUserLoc([lat, lng]);
 
-                // Ensure map exists before adding marker
                 if(map) {
                     L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup("<b>You are Here</b>").openPopup();
                     map.setView([lat, lng], 14);
                     fetchBackendHospitals(lat, lng, map);
                 }
             },
-            () => setStatusMsg("Location Access Denied."),
+            () => setStatusMsg("Location Signal Lost."),
             { enableHighAccuracy: true }
         );
-        // eslint-disable-next-line
     }, [map]);
 
     const fetchBackendHospitals = async (lat, lng, currentMap) => {
@@ -112,7 +104,7 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
             setHospitals(data);
 
             if (data.length > 0) {
-                setStatusMsg(`${data.length} found`);
+                setStatusMsg(`${data.length} UNITS FOUND`);
                 data.forEach(h => {
                     const hLat = parseFloat(h.latitude);
                     const hLng = parseFloat(h.longitude);
@@ -125,19 +117,19 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                     }
                 });
                 
-                // Select first by default
                 const nearest = data[0];
                 setSelectedId(nearest.hospitalId);
                 drawRoute([lat, lng], [parseFloat(nearest.latitude), parseFloat(nearest.longitude)], currentMap);
             } else {
-                setStatusMsg(`No results for ${specialty}.`);
+                setStatusMsg(`No ${specialty} coverage in this sector.`);
             }
         } catch (e) {
             console.error(e);
-            setStatusMsg("Connection Failed");
+            setStatusMsg("Network Offline");
         }
     };
 
+    // --- 🔥 FEATURE 2: ANIMATED ROUTE LINE ---
     const drawRoute = (start, end, mapInstance) => {
         if (!mapInstance) return;
 
@@ -147,7 +139,14 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
 
         const control = L.Routing.control({
             waypoints: [L.latLng(start), L.latLng(end)],
-            lineOptions: { styles: [{ color: '#dc2626', weight: 6, opacity: 0.8 }] },
+            lineOptions: { 
+                styles: [
+                    // Outer Red Glow
+                    { color: '#dc2626', opacity: 0.8, weight: 8 },
+                    // Inner Dashed Animation Line (Controlled via CSS below)
+                    { color: 'white', opacity: 1, weight: 3, dashArray: '10, 10', className: 'animated-route' } 
+                ] 
+            },
             createMarker: () => null, 
             addWaypoints: false,
             draggableWaypoints: false,
@@ -165,9 +164,9 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
         routingControlRef.current = control;
     };
 
-    // --- 🚨 REQUEST ADMISSION FUNCTION ---
+    // --- REQUEST FUNCTION ---
     const sendRequest = async (hospital) => {
-        if (!window.confirm(`Request Immediate Admission at ${hospital.name}?`)) return;
+        if (!window.confirm(`Transmit Critical Request to ${hospital.name}?`)) return;
 
         try {
             const payload = {
@@ -181,11 +180,10 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
             setActiveRequestId(hospital.hospitalId);
             setRequestStatus("Pending");
             
-            // Poll for response
             startStatusPolling(res.data.id);
 
         } catch (e) {
-            alert("Failed to send alert. Try calling directly.");
+            alert("Signal Failed. Switch to Manual Call.");
         }
     };
 
@@ -198,9 +196,8 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                 if (status !== 'Pending') {
                     setRequestStatus(status);
                     clearInterval(interval);
-                    
-                    if (status === 'Accepted') alert("✅ HOSPITAL ACCEPTED! Proceed immediately.");
-                    if (status === 'Declined') alert("❌ FACILITY UNAVAILABLE. Try another hospital.");
+                    if (status === 'Accepted') alert("✅ HOSPITAL APPROVED. UNIT PREPARING FOR ARRIVAL.");
+                    if (status === 'Declined') alert("❌ HOSPITAL FULL. REROUTING ADVISED.");
                 }
             } catch (e) { console.error(e); }
         }, 3000); 
@@ -218,23 +215,20 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
             <div style={{ 
                 background: '#dc2626', color: 'white', padding: '10px 20px', 
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-                height: '60px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', zIndex: 10, flexShrink: 0 
+                height: '60px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 10, flexShrink: 0 
             }}>
                 <div style={{ display:'flex', alignItems:'center', gap:'15px' }}>
-                    
-                    {/* ✅ HOME & DASHBOARD BUTTONS */}
                     <button onClick={onGoHome} style={{ background: 'white', color: '#dc2626', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor:'pointer', fontWeight:'bold', fontSize:'0.9rem' }}>
                         🏠 Home
                     </button>
                     <button onClick={onBack} style={{ background: 'rgba(255,255,255,0.2)', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '4px', cursor:'pointer', fontWeight:'bold', fontSize:'0.9rem' }}>
                         ← Dashboard
                     </button>
-
-                    <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight:'600' }}>EMERGENCY: {specialty}</h2>
+                    <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight:'700', letterSpacing:'0.5px' }}>{specialty.toUpperCase()} ALERT</h2>
                 </div>
                 
                 {routeInfo && (
-                    <div style={{ background: 'white', color: '#dc2626', padding: '4px 12px', borderRadius: '20px', fontWeight: 'bold', fontSize: '0.9rem' }}>
+                    <div style={{ background: 'white', color: '#dc2626', padding: '5px 15px', borderRadius: '20px', fontWeight: 'bold', fontSize: '1rem', boxShadow: '0 2px 5px rgba(0,0,0,0.2)' }}>
                         ⏱ {routeInfo}
                     </div>
                 )}
@@ -244,12 +238,12 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                 
                 {/* Sidebar */}
                 <div style={{ 
-                    width: '340px', backgroundColor: '#fff', borderRight: '1px solid #e5e7eb', 
-                    zIndex: 5, overflowY: 'auto', display: 'flex', flexDirection: 'column' 
+                    width: '360px', backgroundColor: '#fff', borderRight: '1px solid #e5e7eb', 
+                    zIndex: 5, overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow:'2px 0 10px rgba(0,0,0,0.05)' 
                 }}>
                     <div style={{ padding: '15px 15px 5px' }}>
-                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', fontWeight: '600' }}>
-                            {statusMsg.toUpperCase()}
+                        <p style={{ margin: 0, fontSize: '0.85rem', color: '#6b7280', fontWeight: '600', textTransform:'uppercase', letterSpacing:'1px' }}>
+                            {statusMsg}
                         </p>
                     </div>
                     
@@ -265,40 +259,41 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                                         if (userLoc) drawRoute(userLoc, [h.latitude, h.longitude], map);
                                     }}
                                     style={{ 
-                                        padding: '15px', marginBottom: '10px', 
+                                        padding: '15px', marginBottom: '12px', 
                                         borderRadius: '8px', cursor: 'pointer',
                                         backgroundColor: isSelected ? '#fef2f2' : 'white',
                                         border: isSelected ? '2px solid #ef4444' : '1px solid #e5e7eb',
-                                        boxShadow: isSelected ? '0 4px 6px rgba(239, 68, 68, 0.1)' : 'none',
+                                        boxShadow: isSelected ? '0 4px 10px rgba(239, 68, 68, 0.15)' : '0 2px 4px rgba(0,0,0,0.05)',
                                         transition: 'all 0.2s ease'
                                     }}
                                 >
                                     <div style={{ display:'flex', justifyContent:'space-between', alignItems:'start' }}>
-                                        <strong style={{ color: isSelected ? '#b91c1c' : '#1f2937', fontSize: '1rem' }}>{h.name}</strong>
-                                        {i === 0 && <span style={{fontSize:'0.65rem', background:'#ef4444', color:'white', padding:'2px 6px', borderRadius:'4px'}}>NEAREST</span>}
+                                        <strong style={{ color: isSelected ? '#b91c1c' : '#1f2937', fontSize: '1.05rem' }}>{h.name}</strong>
+                                        {i === 0 && <span style={{fontSize:'0.65rem', background:'#ef4444', color:'white', padding:'2px 6px', borderRadius:'4px'}}>BEST</span>}
                                     </div>
                                     <div style={{ fontSize: '0.85rem', color: '#6b7280', margin: '6px 0' }}>{h.address}</div>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#374151', display:'flex', alignItems:'center', gap:'5px', marginBottom:'10px' }}>
+                                    <div style={{ fontSize: '0.9rem', fontWeight: '600', color: '#374151', display:'flex', alignItems:'center', gap:'5px', marginBottom:'12px' }}>
                                         📞 {h.phoneNumber}
                                     </div>
 
-                                    {/* ✅ THE REQUEST ADMIT BUTTON */}
+                                    {/* Request Button */}
                                     <button 
                                         onClick={(e) => { e.stopPropagation(); sendRequest(h); }}
                                         disabled={isRequestActive && requestStatus !== null}
                                         style={{
-                                            width: '100%', padding: '8px', borderRadius: '4px', border: 'none',
-                                            fontWeight: 'bold', cursor: 'pointer',
+                                            width: '100%', padding: '10px', borderRadius: '6px', border: 'none',
+                                            fontWeight: 'bold', cursor: 'pointer', fontSize:'0.9rem',
                                             backgroundColor: isRequestActive && requestStatus === 'Pending' ? '#f59e0b' : 
                                                              isRequestActive && requestStatus === 'Accepted' ? '#22c55e' :
                                                              isRequestActive && requestStatus === 'Declined' ? '#ef4444' : '#2563eb',
-                                            color: 'white'
+                                            color: 'white',
+                                            boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
                                         }}
                                     >
-                                        {isRequestActive && requestStatus === 'Pending' ? '⏳ Requesting...' :
-                                         isRequestActive && requestStatus === 'Accepted' ? '✅ ADMIT ACCEPTED' :
-                                         isRequestActive && requestStatus === 'Declined' ? '❌ DECLINED' :
-                                         '🔔 Request Admission'}
+                                        {isRequestActive && requestStatus === 'Pending' ? '⏳ CONTACTING UNIT...' :
+                                         isRequestActive && requestStatus === 'Accepted' ? '✅ ADMISSION APPROVED' :
+                                         isRequestActive && requestStatus === 'Declined' ? '❌ CAPACITY FULL' :
+                                         '🔔 REQUEST ADMISSION'}
                                     </button>
 
                                 </div>
@@ -307,9 +302,39 @@ const EmergencyMap = ({ symptomData, onBack, onGoHome }) => {
                     </div>
                 </div>
 
-                <div ref={mapRef} style={{ flex: 1, height: '100%', backgroundColor: '#f3f4f6', zIndex: 1 }} />
+                {/* Map */}
+                <div ref={mapRef} style={{ flex: 1, height: '100%', backgroundColor: '#fff', zIndex: 1 }} />
             </div>
-            <style>{`.leaflet-routing-container { display: none !important; }`}</style>
+
+            {/* CSS FOR ANIMATIONS */}
+            <style>{`
+                .leaflet-routing-container { display: none !important; }
+                
+                /* Animated Route Line */
+                .animated-route {
+                    stroke-dasharray: 10;
+                    animation: dash-animation 1s linear infinite;
+                }
+                @keyframes dash-animation {
+                    from { stroke-dashoffset: 20; }
+                    to { stroke-dashoffset: 0; }
+                }
+
+                /* User Radar Pulse */
+                .radar-pulse {
+                    position: absolute;
+                    width: 100%; height: 100%;
+                    border-radius: 50%;
+                    border: 2px solid #2563eb;
+                    opacity: 0;
+                    z-index: 1;
+                    animation: radar-scale 2s infinite ease-out;
+                }
+                @keyframes radar-scale {
+                    0% { transform: scale(1); opacity: 0.8; }
+                    100% { transform: scale(3); opacity: 0; }
+                }
+            `}</style>
         </div>
     );
 };

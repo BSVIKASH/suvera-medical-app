@@ -911,3 +911,39 @@ body {
     margin-top: 0.5rem;
   }
 }
+
+/* Tactical "Ant-Path" Glow Effect */
+.leaflet-ant-path {
+    stroke-dasharray: 10, 20;
+    animation: move 1s linear infinite;
+    stroke: #00f2fe; /* Glowing Cyan */
+}
+
+@keyframes move {
+    from { stroke-dashoffset: 30; }
+    to { stroke-dashoffset: 0; }
+}
+
+/* Radar Pulse for the User's Location */
+.user-radar-pulse {
+    width: 20px;
+    height: 20px;
+    background: #00f2fe;
+    border-radius: 50%;
+    box-shadow: 0 0 10px #00f2fe, 0 0 40px #00f2fe;
+    position: relative;
+}
+
+.user-radar-pulse::after {
+    content: '';
+    position: absolute;
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    border: 2px solid #00f2fe;
+    animation: radar-expand 2s ease-out infinite;
+}
+
+@keyframes radar-expand {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(4); opacity: 0; }
+}
