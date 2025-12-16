@@ -239,7 +239,7 @@ const MedicalApp = () => {
         </div>
       </div>
       <div className="footer-bottom">
-        <p>© 2024 Suvera Health. All rights reserved.</p>
+        <p>© 2025 Suvera Health. All rights reserved.</p>
       </div>
 
       {/* Hospital Login Modal */}

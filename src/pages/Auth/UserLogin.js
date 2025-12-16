@@ -1,102 +1,59 @@
-import React, { useState, useEffect } from 'react';
-import '../../styles/Auth.css';
+import React, { useState } from 'react';
+import api from '../../api'; // Import the API connection
+import '../../styles/Auth.css'; // Uses your existing styling
 
 const UserLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
-  const [phone, setPhone] = useState('');
-  const [step, setStep] = useState('phone');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [timer, setTimer] = useState(60);
-  const [canResend, setCanResend] = useState(false);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: ''
+  });
 
-  useEffect(() => {
-    let interval;
-    if (step === 'otp' && timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-    } else if (timer === 0) {
-      setCanResend(true);
-    }
-    return () => clearInterval(interval);
-  }, [step, timer]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendOtp = () => {
-    if (phone.length === 10) {
-      setStep('otp');
-      setTimer(60);
-      setCanResend(false);
-      setOtp(['', '', '', '', '', '']);
-      alert('OTP sent to your phone: 123456');
-    } else {
-      alert('Please enter a valid 10-digit phone number');
-    }
+  // Handle Input Changes
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
   };
 
-  const handleOtpChange = (index, value) => {
-    // Only allow numbers and single character
-    if (value.length <= 1 && /^\d*$/.test(value)) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
+  // Handle Login Logic
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-      // Auto-focus next input
-      if (value !== '' && index < 5) {
-        const nextInput = document.getElementById(`otp-${index + 1}`);
-        if (nextInput) {
-          nextInput.focus();
-        }
-      }
+    try {
+      // 1. Send Login Request
+      const response = await api.post('/Patients/login', {
+          email: formData.email,
+          password: formData.password
+      });
 
-      // Check if all fields are filled
-      if (newOtp.every(digit => digit !== '') && index === 5) {
-        // FIX: Pass the 'newOtp' directly to verify, don't wait for state update
-        handleVerifyOtp(newOtp);
-      }
-    }
-  };
+      // 2. Success Handler
+      // We extract details sent from the new C# Login Method
+      const { message, user } = response.data;
+      
+      console.log(message, user);
 
-  const handleKeyDown = (index, e) => {
-    // Handle backspace
-    if (e.key === 'Backspace' && otp[index] === '' && index > 0) {
-      const prevInput = document.getElementById(`otp-${index - 1}`);
-      if (prevInput) {
-        prevInput.focus();
-      }
-    }
-  };
-
-  // FIX: Accept an argument 'finalOtp'. If not provided, use state 'otp'.
-  const handleVerifyOtp = (finalOtp = otp) => {
-    const enteredOtp = finalOtp.join('');
-    
-    if (enteredOtp.length !== 6) {
-      alert('Please enter the complete 6-digit OTP');
-      return;
-    }
-
-    if (enteredOtp === '123456') {
-       localStorage.setItem('userPhone', phone);
+      // 3. Save User Context to LocalStorage
+      // Note: We save Phone because your Dashboard currently relies on it to fetch Profile
+      if (user.phone) localStorage.setItem('userPhone', user.phone);
+      if (user.email) localStorage.setItem('userEmail', user.email);
+      
+      alert(`✅ Welcome back, ${user.name}!`);
+      
+      // 4. Navigate to Dashboard
       onLogin();
-    } else {
-      alert('Invalid OTP. Please try again.');
-      // Clear OTP fields
-      setOtp(['', '', '', '', '', '']);
-      // Focus first input
-      setTimeout(() => {
-        const firstInput = document.getElementById('otp-0');
-        if (firstInput) {
-          firstInput.focus();
-        }
-      }, 0);
-    }
-  };
 
-  const handleResendOtp = () => {
-    if (canResend) {
-      setTimer(60);
-      setCanResend(false);
-      setOtp(['', '', '', '', '', '']);
-      alert('New OTP sent to your phone: 123456');
+    } catch (error) {
+      console.error("Login Error:", error);
+      
+      // Handle Specific Backend Errors (e.g. "User not registered" or "Invalid password")
+      const errMsg = error.response?.data?.message || "Login failed. Please check credentials.";
+      alert(`❌ ${errMsg}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -116,95 +73,56 @@ const UserLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
           <div className="auth-header">
             <div className="auth-icon">🔐</div>
             <h2>Patient Login</h2>
-            <p className="auth-subtitle">Access your emergency medical services</p>
+            <p className="auth-subtitle">Sign in to access your medical profile</p>
           </div>
           
-          {step === 'phone' ? (
+          <form onSubmit={handleLogin}>
+            
+            {/* EMAIL INPUT */}
             <div className="form-group">
-              <label htmlFor="phone">Mobile Number</label>
+              <label htmlFor="email">Email Address</label>
               <div className="input-with-icon">
-                <span className="input-icon">📱</span>
+                <span className="input-icon">📧</span>
                 <input
-                  type="tel"
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                  placeholder="Enter 10-digit mobile number"
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="Enter your registered email"
                   className="form-input"
-                  maxLength="10"
+                  required
+                  autoFocus
                 />
               </div>
-              <button 
-                type="button" 
-                onClick={handleSendOtp} 
-                className="auth-btn"
-                disabled={phone.length !== 10}
-              >
-                📲 Send OTP
-              </button>
             </div>
-          ) : (
-            <>
-              <div className="form-group">
-                <label>Enter Verification Code</label>
-                <p className="otp-instructions">
-                  Enter the 6-digit code sent to <strong>+1 {phone}</strong>
-                </p>
-                
-                <div className="otp-timer">
-                  {timer > 0 ? `Code expires in ${timer}s` : 'Code expired'}
-                </div>
 
-                <div className="otp-container">
-                  {otp.map((digit, index) => (
-                    <input
-                      key={index}
-                      id={`otp-${index}`}
-                      type="text"
-                      value={digit}
-                      onChange={(e) => handleOtpChange(index, e.target.value)}
-                      onKeyDown={(e) => handleKeyDown(index, e)}
-                      className={`otp-input ${digit ? 'filled' : ''}`}
-                      maxLength="1"
-                      autoFocus={index === 0}
-                    />
-                  ))}
-                </div>
-
-                <button 
-                  type="button" 
-                  onClick={() => handleVerifyOtp()} 
-                  className="auth-btn"
-                  disabled={otp.some(digit => digit === '')}
-                >
-                  ✅ Verify OTP
-                </button>
-
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setStep('phone');
-                    setOtp(['', '', '', '', '', '']);
-                  }}
-                  className="back-btn"
-                >
-                  ↩ Change Number
-                </button>
-
-                <div className="resend-otp">
-                  {canResend ? (
-                    <span className="resend-link" onClick={handleResendOtp}>
-                      Resend OTP
-                    </span>
-                  ) : (
-                    <span style={{ color: '#718096' }}>
-                      Resend OTP in {timer}s
-                    </span>
-                  )}
-                </div>
+            {/* PASSWORD INPUT */}
+            <div className="form-group">
+              <label htmlFor="password">Password</label>
+              <div className="input-with-icon">
+                <span className="input-icon">🔑</span>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter your password"
+                  className="form-input"
+                  required
+                />
               </div>
-            </>
-          )}
+            </div>
+
+            <button 
+              type="submit" 
+              className="auth-btn"
+              disabled={isLoading}
+            >
+              {isLoading ? "Verifying..." : "🔓 Secure Login"}
+            </button>
+          </form>
 
           <div className="auth-footer">
             <p>
