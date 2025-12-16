@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import api from '../../api'; // ✅ Import the API connection we created earlier
+import api from '../../api'; // Import your API instance
 import '../../styles/Auth.css';
 
 const HospitalLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
@@ -7,55 +7,38 @@ const HospitalLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
     email: '',
     password: ''
   });
-
-  // State to handle loading and errors
+  
   const [isLoading, setIsLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
-    // Clear error when user types
-    if (errorMessage) setErrorMessage('');
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setErrorMessage('');
 
     try {
-      // 1. Send Email & Password to C# Backend
-      // This hits: POST https://localhost:7189/api/Auth/login
+      // 1. Send Login Request
       const response = await api.post('/Auth/login', {
         email: formData.email,
         password: formData.password
       });
 
-      // 2. If successful, C# returns a Token
-      const { token } = response.data;
+      // 2. ✅ CRITICAL FIX: Save Email & Token to LocalStorage
+      // The Dashboard uses this 'hospitalEmail' to fetch the profile data.
+      localStorage.setItem('hospitalToken', response.data.token);
+      localStorage.setItem('hospitalEmail', formData.email); 
 
-      // 3. Save Token to Browser Storage (so they stay logged in)
-      localStorage.setItem('hospitalToken', token);
-      
-      console.log("Login Success! Token:", token);
-
-      // 4. Trigger the parent function to show the Dashboard
+      // 3. Navigate to Dashboard
       onLogin();
 
     } catch (error) {
       console.error("Login Error:", error);
-      
-      // 5. Handle "Invalid Password" or "User Not Found"
-      if (error.response && error.response.status === 401) {
-        setErrorMessage("❌ Invalid Email or Password. Please try again.");
-      } else if (error.response && error.response.status === 400) {
-        setErrorMessage("⚠️ " + error.response.data);
-      } else {
-        setErrorMessage("❌ Server error. Is the backend running?");
-      }
+      alert(error.response?.data?.message || "Login failed. Check credentials.");
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +48,7 @@ const HospitalLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
     <div className="auth-container">
       <nav className="auth-nav">
         <div className="auth-nav-content">
-          <h1>🏥 Medipath Health</h1>
+          <h1>🏥 Emergency Help System</h1>
           <button className="back-button" onClick={onBack}>
             ← Back to Home
           </button>
@@ -77,68 +60,58 @@ const HospitalLogin = ({ onLogin, onSwitchToSignup, onBack }) => {
           <div className="auth-header">
             <div className="auth-icon">🏥</div>
             <h2>Hospital Login</h2>
-            <p className="auth-subtitle">Access your hospital dashboard</p>
+            <p className="auth-subtitle">Manage emergency requests & capacity</p>
           </div>
-
+          
           <form onSubmit={handleSubmit}>
-            {/* Show Error Message if Login Fails */}
-            {errorMessage && (
-              <div style={{ 
-                color: '#dc2626', 
-                backgroundColor: '#fee2e2', 
-                padding: '10px', 
-                borderRadius: '6px', 
-                marginBottom: '15px', 
-                fontSize: '0.9rem',
-                textAlign: 'center'
-              }}>
-                {errorMessage}
-              </div>
-            )}
-
             <div className="form-group">
-              <label htmlFor="email">📧 Email</label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                placeholder="hospital@email.com"
-                className="form-input"
-                required
-              />
+              <label htmlFor="email">Hospital Email ID</label>
+              <div className="input-with-icon">
+                <span className="input-icon">📧</span>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="admin@hospital.com"
+                  className="form-input"
+                  required
+                />
+              </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="password">🔒 Password</label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="Enter your password"
-                className="form-input"
-                required
-              />
+              <label htmlFor="password">Password</label>
+              <div className="input-with-icon">
+                <span className="input-icon">🔒</span>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="Enter secure password"
+                  className="form-input"
+                  required
+                />
+              </div>
             </div>
 
             <button 
               type="submit" 
-              className="auth-btn" 
+              className="auth-btn"
               disabled={isLoading}
-              style={{ opacity: isLoading ? 0.7 : 1 }}
             >
-              {isLoading ? "Verifying..." : "🏥 Login to Dashboard"}
+              {isLoading ? "Verifying..." : "🔐 Access Dashboard"}
             </button>
           </form>
 
           <div className="auth-footer">
             <p>
-              Don't have an account?{' '}
+              New Healthcare Provider?{' '}
               <span className="auth-link" onClick={onSwitchToSignup}>
-                Register Hospital
+                Register Facility
               </span>
             </p>
           </div>
