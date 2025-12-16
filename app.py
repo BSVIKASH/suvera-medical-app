@@ -3,16 +3,15 @@ from fastapi.middleware.cors import CORSMiddleware
 import whisper
 import os
 
-# Import your medical NLP pipeline
+# Import the medical pipeline from the OTHER file
 from Input_handling import medical_pipeline
 
 app = FastAPI(
     title="Medical Symptom Analyzer API",
-    description="Accepts text or voice, converts voice to text, then analyzes symptoms.",
     version="1.0"
 )
 
-# Allow all origins (React, mobile apps)
+# CORS Setup (Allows React to connect)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -21,49 +20,46 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load Whisper model once at startup
-print("Loading Whisper model... Please wait 5–10 seconds.")
-model = whisper.load_model("small")  # Best for Indian languages
+# Load Whisper model once
+print("Loading Whisper model... This may take a moment.")
+model = whisper.load_model("small")
 
-# --------------------------------------------------------
-# TEXT INPUT API
-# --------------------------------------------------------
+# --- TEXT ANALYSIS ENDPOINT ---
 @app.post("/analyze-text/")
 async def analyze_text(text: str = Form(...)):
-    result = medical_pipeline(text)
-    return {
-        "input_type": "text",
-        "text_received": text,
-        "analysis": result
-    }
+    try:
+        # Pass text to the pipeline
+        result = medical_pipeline(text)
+        return {"analysis": result}
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return {"error": str(e)}
 
-# --------------------------------------------------------
-# AUDIO INPUT API
-# --------------------------------------------------------
+# --- AUDIO ANALYSIS ENDPOINT ---
 @app.post("/analyze-audio/")
 async def analyze_audio(file: UploadFile = File(...)):
-    # Save uploaded audio
     file_path = f"temp_{file.filename}"
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    try:
+        with open(file_path, "wb") as f:
+            f.write(await file.read())
 
-    # Whisper transcription
-    print("Transcribing audio...")
-    output = model.transcribe(file_path, fp16=False)
-    text = output["text"]
+        # Whisper Transcription
+        output = model.transcribe(file_path, fp16=False)
+        text = output["text"]
 
-    # Process text
-    result = medical_pipeline(text)
+        # Pass to pipeline
+        result = medical_pipeline(text)
 
-    # Cleanup
-    os.remove(file_path)
-
-    return {
-        "input_type": "audio",
-        "transcribed_text": text,
-        "analysis": result
-    }
+        return {
+            "transcribed_text": text,
+            "analysis": result
+        }
+    except Exception as e:
+        return {"error": str(e)}
+    finally:
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 @app.get("/")
 def home():
-    return {"message": "Medical Analyzer API Running! Visit /docs for Swagger UI."}
+    return {"message": "API Running."}

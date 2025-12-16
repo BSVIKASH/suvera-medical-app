@@ -6,120 +6,72 @@ from nltk.corpus import stopwords
 from nltk.stem import WordNetLemmatizer
 from difflib import SequenceMatcher
 
-# NLTK setup
-nltk.download('punkt', quiet=True)
-nltk.download('stopwords', quiet=True)
-nltk.download('wordnet', quiet=True)
+# -----------------------------------------------------------
+# NLTK SETUP (Updated for 2025 compatibility)
+# -----------------------------------------------------------
+try:
+    nltk.data.find('tokenizers/punkt_tab')
+    nltk.data.find('corpora/stopwords')
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    print("Downloading necessary NLTK data...")
+    nltk.download('punkt')
+    nltk.download('punkt_tab') # ✅ REQUIRED FOR NEW NLTK
+    nltk.download('stopwords')
+    nltk.download('wordnet')
+    nltk.download('omw-1.4')
 
 lemmatizer = WordNetLemmatizer()
 english_stopwords = set(stopwords.words('english'))
 
 # -----------------------------------------------------------
-# 1. SYMPTOM MASTER LISTS
+# 1. HARDCODED DATA
 # -----------------------------------------------------------
 
 CRITICAL_SYMPTOMS = [
-    # Cardiovascular
-    "heart pain", "chest pain", "left arm pain", "fainting", "unconscious",
-    "stroke", "sudden paralysis", "slurred speech", "severe headache", "loss of vision",
-    # Respiratory
-    "shortness of breath", "breathing difficulty", "no breathing", "severe wheezing",
-    "choking", "blue lips", "blue face",
-    # Bleeding & Trauma
-    "blood vomiting", "severe bleeding", "internal bleeding", "gunshot wound",
-    "deep stab wound", "severe burns", "major accident injury",
-    # Neurological
-    "seizure", "convulsions", "loss of consciousness", "coma",
-    "confusion", "sudden inability to move",
-    # GI & Infections
-    "severe abdominal pain", "black stool", "blood in stool",
-    "persistent vomiting", "vomiting blood", "severe dehydration",
-    # Allergic
-    "anaphylaxis", "swelling of face or throat", "high fever with rash",
-    # Obstetric & Pediatric
-    "heavy pregnancy bleeding", "labor complications", "newborn not breathing",
-    # General Critical Signs
-    "shock", "cold clammy skin", "extreme weakness", "unable to wake up",
-    "sudden collapse"
+    "heart attack", "chest pain", "cardiac arrest", "severe chest pressure",
+    "left arm pain", "jaw pain", "profuse sweating", "heart",
+    "stroke", "face drooping", "arm weakness", "slurred speech",
+    "sudden numbness", "vision loss", "severe headache", "unconscious",
+    "fainting", "seizure", "paralysis", "confusion",
+    "accident", "severe bleeding", "trauma", "fracture", "head injury",
+    "deep cut", "burn", "gunshot", "stab wound", "road accident",
+    "broken bone", "crushed", "amputation", "crash",
+    "difficulty breathing", "shortness of breath", "choking", 
+    "severe asthma", "not breathing", "blue lips",
+    "severe pain", "poisoning", "anaphylaxis", "severe allergic reaction",
+    "vomiting blood", "labor pain", "suicide attempt"
 ]
-
-NORMAL_SYMPTOMS = [
-    "headache", "fever", "cough", "stomach pain", "back pain",
-    "joint pain", "cold", "nausea", "dizziness", "vomiting", "diarrhea"
-]
-
-# -----------------------------------------------------------
-# 2. DEPARTMENT MAPPING
-# -----------------------------------------------------------
 
 CRITICAL_DEPT_MAP = {
-    "heart pain": "Cardiology",
-    "chest pain": "Cardiology",
-    "shortness of breath": "Pulmonology",
-    "breathing difficulty": "Pulmonology",
-    "stroke": "Neurology",
-    "unconscious": "Neurology",
-    "slurred speech": "Neurology",
-    "sudden paralysis": "Neurology",
-    "blood vomiting": "Gastroenterology",
-    "severe bleeding": "Emergency",
-    "left arm pain": "Cardiology",
-    "fainting": "Cardiology"
+    "heart": "Cardiology", "chest": "Cardiology", "cardiac": "Cardiology", "sweating": "Cardiology",
+    "stroke": "Neurology", "face": "Neurology", "arm": "Neurology", "speech": "Neurology",
+    "paralysis": "Neurology", "seizure": "Neurology", "unconscious": "Neurology", "headache": "Neurology", "faint": "Neurology",
+    "accident": "Emergency", "bleed": "Emergency", "trauma": "Emergency", "fracture": "Emergency",
+    "burn": "Emergency", "injury": "Emergency", "cut": "Emergency", "wound": "Emergency", "broken": "Emergency", "crash": "Emergency",
+    "breath": "Pulmonology", "chok": "Pulmonology", "asthma": "Pulmonology",
+    "vomit": "Gastroenterology", "poison": "Emergency", "stomach": "Gastroenterology", "abdominal": "Gastroenterology"
 }
 
 DOCTOR_MAP = {
     "Cardiology": "Cardiologist",
-    "Pulmonology": "Pulmonologist",
     "Neurology": "Neurologist",
-    "Gastroenterology": "Gastroenterologist",
-    "Nephrology": "Nephrologist",
-    "Endocrinology": "Endocrinologist",
-    "Orthopedics": "Orthopedic Surgeon",
-    "Dermatology": "Dermatologist",
-    "ENT": "ENT Specialist",
-    "Gynecology": "Gynecologist",
-    "Psychiatry": "Psychiatrist",
-    "Infectious Diseases": "Infectious Diseases Specialist",
     "Emergency": "Emergency Physician",
+    "Pulmonology": "Pulmonologist",
+    "Gastroenterology": "Gastroenterologist",
     "General": "General Physician"
 }
 
-# -----------------------------------------------------------
-# 3. DISEASE MAP
-# -----------------------------------------------------------
-
 DISEASE_MAP = {
-    "Neurology": [
-        ("sudden paralysis", "Paralysis - Stroke"),
-        ("slurred speech", "Stroke"),
-        ("severe headache", "Migraine"),
-        ("loss of vision", "Optic Neuritis"),
-        ("seizure", "Epilepsy")
-    ],
-    "Cardiology": [
-        ("chest pain", "Possible Heart Attack"),
-        ("heart pain", "Angina"),
-        ("left arm pain", "Heart Attack Indicator"),
-        ("fainting", "Cardiac Syncope")
-    ],
-    "Pulmonology": [
-        ("shortness of breath", "Asthma Attack"),
-        ("breathing difficulty", "COPD Exacerbation"),
-        ("blood vomiting", "Lung Cancer / TB")
-    ],
-    "Gastroenterology": [
-        ("blood vomiting", "Upper GI Bleed"),
-        ("stomach pain", "Gastric Ulcer"),
-        ("diarrhea", "Gastroenteritis")
-    ],
-    "Emergency": [
-        ("severe bleeding", "Major Trauma"),
-        ("unconscious", "Emergency Shock")
-    ]
+    "Neurology": { "paralysis": "Stroke / Paralysis", "speech": "Stroke", "headache": "Severe Migraine", "seizure": "Epilepsy", "unconscious": "Loss of Consciousness" },
+    "Cardiology": { "chest": "Myocardial Infarction", "heart": "Cardiac Arrest", "arm": "Angina", "faint": "Cardiac Syncope" },
+    "Emergency": { "accident": "Trauma", "bleed": "Hemorrhage", "burn": "Severe Burns", "fracture": "Bone Fracture" },
+    "Pulmonology": { "breath": "Respiratory Failure", "chok": "Obstruction" },
+    "Gastroenterology": { "vomit": "GI Bleeding", "pain": "Appendicitis/Acute Abdomen" }
 }
 
 # -----------------------------------------------------------
-# 4. LANGUAGE & TRANSLATION
+# HELPER FUNCTIONS
 # -----------------------------------------------------------
 
 def detect_language(text: str) -> str:
@@ -136,128 +88,52 @@ def translate_to_english(text: str, lang: str) -> str:
     except:
         return text
 
-# -----------------------------------------------------------
-# 5. TEXT PREPROCESSING
-# -----------------------------------------------------------
-
 def preprocess_text(text: str) -> str:
     text = text.lower()
     text = re.sub(r'[^\w\s]', ' ', text)
     return re.sub(r'\s+', ' ', text).strip()
 
-def extract_symptoms(text: str):
-    text = preprocess_text(text)
-    parts = re.split(r'\band\b|,|with|மற்றும்|உடன்', text)
-    return [p.strip() for p in parts if p.strip()]
-
-# -----------------------------------------------------------
-# 6. FUZZY MATCHER
-# -----------------------------------------------------------
-
-def is_match(symptom, keyword, threshold=0.6):
-    symptom = symptom.lower()
-    keyword = keyword.lower()
-    if keyword in symptom:  # substring match
-        return True
-    score = SequenceMatcher(None, symptom, keyword).ratio()
-    return score >= threshold
-
-# -----------------------------------------------------------
-# 7. CLASSIFIER (ONE CRITICAL → CRITICAL)
-# -----------------------------------------------------------
-
-def classify_symptoms(symptoms):
-    classified = {"Critical": [], "Normal": []}
-
-    for s in symptoms:
-        found_critical = False
-        for keyword in CRITICAL_SYMPTOMS:
-            if is_match(s, keyword):
-                classified["Critical"].append(s)
-                found_critical = True
-                break
-        if not found_critical:
-            classified["Normal"].append(s)
-
-    return classified
-
-# -----------------------------------------------------------
-# 8. MAP CRITICAL SYMPTOMS TO DEPARTMENTS
-# -----------------------------------------------------------
-
-def categorize_critical_symptoms(symptoms):
-    output = {}
-    for s in symptoms:
-        matched = False
-        for key, dept in CRITICAL_DEPT_MAP.items():
-            if is_match(s, key):
-                output.setdefault(dept, []).append(s)
-                matched = True
-                break
-        if not matched:
-            output.setdefault("Emergency", []).append(s)
-    return output
-
-# -----------------------------------------------------------
-# 9. PREDICT DISEASE + DOCTOR
-# -----------------------------------------------------------
-
-def predict_disease_and_doctor(dept_categories):
-    if not dept_categories:
-        return {
-            "top_department": "Emergency",
-            "disease_prediction": "Unidentified Emergency Condition",
-            "recommended_doctor": "Emergency Physician"
-        }
-
-    top_dept = max(dept_categories, key=lambda d: len(dept_categories[d]))
-    predicted = "Unidentified Emergency Condition"
-
-    if top_dept in DISEASE_MAP:
-        for symptom in dept_categories[top_dept]:
-            for keyword, disease in DISEASE_MAP[top_dept]:
-                if is_match(symptom, keyword):
-                    predicted = disease
-                    break
-
-    return {
-        "top_department": top_dept,
-        "disease_prediction": predicted,
-        "recommended_doctor": DOCTOR_MAP.get(top_dept, "General Physician")
-    }
-
-# -----------------------------------------------------------
-# 10. MAIN PIPELINE
-# -----------------------------------------------------------
-
 def medical_pipeline(user_text: str):
     lang = detect_language(user_text)
     english_text = translate_to_english(user_text, lang)
+    cleaned_text = preprocess_text(english_text)
 
-    symptoms = extract_symptoms(english_text)
-    classification = classify_symptoms(symptoms)
+    # 1. Determine Status & Department
+    status = "Normal"
+    department = "General"
+    
+    # Critical Check Loop
+    for keyword, dept in CRITICAL_DEPT_MAP.items():
+        if keyword in cleaned_text:
+            status = "Critical"
+            department = dept
+            break  
+    
+    # 2. Predict Specific Condition
+    prediction = "General Checkup Required"
+    
+    if department in DISEASE_MAP:
+        possible_conditions = []
+        for keyword, condition in DISEASE_MAP[department].items():
+            if keyword in cleaned_text:
+                possible_conditions.append(condition)
+        
+        if possible_conditions:
+            prediction = ", ".join(possible_conditions)
+        else:
+            prediction = f"Critical {department} Issue"
+    elif status == "Critical":
+        prediction = "Emergency Situation"
 
-    # FORCE CRITICAL CASE IF ANY CRITICAL SYMPTOM EXISTS
-    if classification["Critical"]:
-        final_status = "Critical"
-        dept_categories = categorize_critical_symptoms(classification["Critical"])
-        disease_info = predict_disease_and_doctor(dept_categories)
-    else:
-        final_status = "Normal"
-        dept_categories = {}
-        disease_info = {
-            "top_department": "General",
-            "disease_prediction": "Common Illness",
-            "recommended_doctor": "General Physician"
-        }
+    doctor = DOCTOR_MAP.get(department, "General Physician")
 
     return {
         "original_text": user_text,
-        "language_detected": lang,
         "english_text": english_text,
-        "symptoms": symptoms,
-        "classification": classification,
-        "final_status": final_status,
-        "critical_departments": dept_categories,
-        "disease_info": disease_info
+        "final_status": status,
+        "disease_info": {
+            "top_department": department,
+            "disease_prediction": prediction,
+            "recommended_doctor": doctor
+        }
     }
