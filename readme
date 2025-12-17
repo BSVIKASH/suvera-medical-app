@@ -39,4 +39,4 @@ o	uvicorn app:app --reload --port 8000
 •	Audio Processing: FFmpeg (System-level dependency required for OpenAI Whisper).
 •	API Documentation: Swagger UI (used for testing the .NET API endpoints).
 •	Create separate env file in the vs code for the chatbot integration and add the below content (frontend folder)
-(REACT_APP_GROQ_API_KEY=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)
+(REACT_APP_GROQ_API_KEY=YOUR KEY)
