@@ -1,0 +1,42 @@
+Suvera, a real-time digital healthcare ecosystem designed to streamline emergency response by connecting patients and hospitals instantly. The system provides secure user authentication, symptom-based emergency assistance, optimized osm routing algorithm routing, nearby hospital discovery, first-aid guidance, and an SOS alert feature. Hospitals access an admin panel to facilities, emergency requests, manage beds, doctor availability, with real-time updates. By integrating smart navigation, verified hospital resources, and rapid communication channels. Suvera enables a transparent, efficient, and life-saving emergency care experience for both users and hospitals.
+
+1. Frontend Technology/Framework
+•	Framework: React.js (JavaScript/ES6+)
+•	Routing & State Management: React Hooks (useState, useEffect, useRef) with custom state-based navigation.
+•	Mapping Engine: Leaflet.js (integrated via leaflet npm package) for interactive maps.
+•	Styling: Custom CSS (Responsive Grid layouts, Glassmorphism, CSS Animations).
+•	HTTP Client: Axios (for communicating with the .NET Backend and Python AI Service).
+•	Terminal : npm start
+                      
+2. Backend Technology/Framework
+Primary Backend (Business Logic & Data):
+•	Framework: ASP.NET Core Web API (C# .NET  version 8).
+•	ORM (Object-Relational Mapper): Entity Framework Core (EF Core) for database interactions.
+•	Architecture: Repository Pattern (Controllers → Services → Repositories → Database).
+•	Authentication: JWT (JSON Web Tokens) & Custom Hashing.
+                                   
+Secondary Backend (AI & NLP Microservice):
+•	Language: Python 3.x.
+•	Framework: FastAPI (Uvicorn server).
+•	Key Libraries:
+o	openai-whisper (Voice-to-Text/Speech Recognition).
+o	nltk (Natural Language Processing & Keyword Extraction).
+o	deep-translator (Language Translation).
+o	scikit-learn / difflib (Sequence matching).
+o	(run the below cmds in a separate terminal at the frontend folder)
+       New Terminal (frontend project folder)
+o	 pip install --upgrade numba llvmlite 
+o	uvicorn app:app --reload --port 8000 
+                                   
+3. Database Used
+•	Database System: Microsoft SQL Server (MSSQL).
+•	Management Tool: SQL Server Management Studio (SSMS).
+•	Core Tables: Patients, Hospitals, Doctors, Facilities, EmergencyRequests.
+                                   
+4. Additional Tools/Services
+•	Routing API: OSRM (Open Source Routing Machine) - Used for calculating distance and drawing route paths on the map between the user and hospital.
+•	LLM Integration: Groq API (Llama-3 models) - Used for the "Medical Assistant" Chatbot features.
+•	Audio Processing: FFmpeg (System-level dependency required for OpenAI Whisper).
+•	API Documentation: Swagger UI (used for testing the .NET API endpoints).
+•	Create separate env file in the vs code for the chatbot integration and add the below content (frontend folder)
+(REACT_APP_GROQ_API_KEY=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)
